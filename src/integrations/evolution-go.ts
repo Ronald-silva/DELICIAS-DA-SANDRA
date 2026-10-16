@@ -46,7 +46,8 @@ export function readEvolutionWebhookToken(
   options: { production: boolean; evolutionConfigured: boolean },
 ): string | undefined {
   const token = env.EVOLUTION_WEBHOOK_TOKEN?.trim() ?? "";
-  if (!token && (options.production || options.evolutionConfigured)) {
+  // Apenas exige o token se Evolution realmente estiver configurado (não apenas se as vars existem)
+  if (!token && options.evolutionConfigured) {
     throw new Error("EVOLUTION_WEBHOOK_TOKEN deve ser definido para proteger o webhook Evolution Go.");
   }
   return token || undefined;
