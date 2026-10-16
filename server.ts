@@ -8,7 +8,7 @@ import { resolveStorePath, loadStoreFile, saveStoreFile } from "./src/lib/store.
 import { createOrder, OrderCreationError, type Order } from "./src/lib/orders.ts";
 import { closeDatabasePool, getDatabasePool } from "./src/lib/database.ts";
 import { createHealthHandler } from "./src/lib/health.ts";
-import { BROWNIER_DELIVERY_ENABLED, BROWNIER_HOURS_VERSION, BROWNIER_PICKUP_ADDRESS, BROWNIER_PAYMENT_METHODS, BROWNIER_PIX_KEY, BROWNIER_WHATSAPP, ensureBrownierDeliveryEnabled, ensureBrownierPaymentMethods, ensureBrownierPickupAddress, ensureBrownierOperatingHours, ensureBrownierPixKey, ensureBrownierResponsible, ensureBrownierWhatsapp } from "./src/lib/business-defaults.ts";
+import { BROWNIER_DELIVERY_ENABLED, BROWNIER_HOURS_VERSION, BROWNIER_INSTAGRAM, BROWNIER_PICKUP_ADDRESS, BROWNIER_PAYMENT_METHODS, BROWNIER_PIX_KEY, BROWNIER_WHATSAPP, ensureBrownierDeliveryEnabled, ensureBrownierInstagram, ensureBrownierPaymentMethods, ensureBrownierPickupAddress, ensureBrownierOperatingHours, ensureBrownierPixKey, ensureBrownierResponsible, ensureBrownierWhatsapp } from "./src/lib/business-defaults.ts";
 import { validateStructuredWeeklyHours } from "./src/lib/business-hours.ts";
 import { createWhatsappConversationRuntime } from "./src/agent/whatsapp-conversation.runtime.ts";
 import { createPostgresConversationState } from "./src/agent/postgres-conversation-state.ts";
@@ -97,13 +97,13 @@ function verifyAdminSessionToken(token: string | undefined): boolean {
 
 const demoStore: Store = {
   business: {
-    name: "Brownieria Fortal", tagline: "Brownies artesanais para tornar seu dia mais doce", description: "Veja os sabores disponíveis hoje e monte seu pedido em poucos minutos.",
-    phone: "", whatsapp: BROWNIER_WHATSAPP, address: BROWNIER_PICKUP_ADDRESS, hours: "", instagram: "", pickupEnabled: true, deliveryEnabled: BROWNIER_DELIVERY_ENABLED,
+    name: "Delícias da Sandra", tagline: "Feito com carinho e qualidade", description: "Bolos, brownies, doces e salgados artesanais em Fortaleza. Veja o cardápio e monte seu pedido em poucos minutos.",
+    phone: BROWNIER_WHATSAPP, whatsapp: BROWNIER_WHATSAPP, address: BROWNIER_PICKUP_ADDRESS, hours: "", instagram: BROWNIER_INSTAGRAM, pickupEnabled: true, deliveryEnabled: BROWNIER_DELIVERY_ENABLED,
     pickupSlots: [],
     paymentMethods: [...BROWNIER_PAYMENT_METHODS], deliveryFee: 0,
     pixKey: BROWNIER_PIX_KEY,
-    receivedMessage: "Recebemos seu pedido! A equipe vai confirmar os detalhes em breve.",
-    availabilityNotice: "Os sabores podem variar conforme a disponibilidade.",
+    receivedMessage: "Recebemos seu pedido! A equipe da Delícias da Sandra vai confirmar os detalhes em breve.",
+    availabilityNotice: "Os itens podem variar conforme a disponibilidade do dia.",
     isDemo: true,
   },
   products: [
@@ -129,7 +129,8 @@ async function loadStore(): Promise<Store> {
   const withResponsible = ensureBrownierResponsible(withOperatingHours);
   const withPixKey = ensureBrownierPixKey(withResponsible);
   const withWhatsapp = ensureBrownierWhatsapp(withPixKey);
-  const withDelivery = ensureBrownierDeliveryEnabled(withWhatsapp);
+  const withInstagram = ensureBrownierInstagram(withWhatsapp);
+  const withDelivery = ensureBrownierDeliveryEnabled(withInstagram);
   const withPaymentMethods = ensureBrownierPaymentMethods(withDelivery);
   if (withPaymentMethods !== store) await saveStore(withPaymentMethods);
   return withPaymentMethods;
@@ -273,7 +274,7 @@ async function startServer() {
       const errors = validateStructuredWeeklyHours(body.operatingHours);
       if (errors.length > 0) return res.status(400).json({ error: "Horário de funcionamento inválido.", details: errors });
     }
-    const store = await loadStore(); store.business = { ...store.business, ...body, ...(body.operatingHours !== undefined ? { operatingHoursVersion: BROWNIER_HOURS_VERSION } : {}), name: "Brownieria Fortal" }; await saveStore(store); res.json(store.business);
+    const store = await loadStore(); store.business = { ...store.business, ...body, ...(body.operatingHours !== undefined ? { operatingHoursVersion: BROWNIER_HOURS_VERSION } : {}), name: "Delícias da Sandra" }; await saveStore(store); res.json(store.business);
   });
   app.post("/api/admin/products", admin, adminProductBody, async (req, res) => {
     const store = await loadStore(); const body = req.body ?? {};

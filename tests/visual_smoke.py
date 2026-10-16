@@ -8,7 +8,7 @@ with sync_playwright() as p:
         page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
         page.goto("http://localhost:3000", wait_until="networkidle")
         page.screenshot(path=f"/tmp/brownieria-home-{width}.png", full_page=True)
-        assert page.locator("img[alt='Brownieria Fortal']").count() == 1
+        assert page.locator("img[alt='Delícias da Sandra']").count() == 1
         assert page.locator("text=O brownie que conquista na primeira mordida.").count() == 1
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
         page.get_by_role("button", name="Ver cardápio").first.click()

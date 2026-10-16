@@ -1,9 +1,10 @@
 import { INITIAL_OPERATING_HOURS, isStructuredWeeklyHours } from "./business-hours.ts";
 
-export const BROWNIER_PICKUP_ADDRESS = "Rua Professor Leite Gondim, 896, Antônio Bezerra, Fortaleza – CE, CEP 60360-332";
-export const BROWNIER_RESPONSIBLE_NAME = "Mateus";
-export const BROWNIER_PIX_KEY = "38.011.069/0001-93";
-export const BROWNIER_WHATSAPP = "+55 85 9145-7889";
+export const BROWNIER_PICKUP_ADDRESS = "Fortaleza – CE";
+export const BROWNIER_RESPONSIBLE_NAME = "Sandra";
+export const BROWNIER_PIX_KEY = "";
+export const BROWNIER_WHATSAPP = "+55 85 99003-808";
+export const BROWNIER_INSTAGRAM = "@delicias_da_sandraoficial";
 export const BROWNIER_PAYMENT_METHODS = ["PIX", "DINHEIRO"] as const;
 export const BROWNIER_DELIVERY_ENABLED = false;
 export const BROWNIER_HOURS_VERSION = 2;
@@ -31,10 +32,10 @@ export function ensureBrownierResponsible<T extends StoreWithBusiness>(store: T)
   return { ...store, business: { ...store.business, responsibleName: BROWNIER_RESPONSIBLE_NAME } };
 }
 
-// Chave PIX comercial confirmada. O backfill aplica o dado em instalações
-// existentes, para que o atendimento nunca precise inventar informação de
-// pagamento nem encaminhar uma dúvida simples.
+// Chave PIX comercial confirmada. Sem chave oficial ainda, o backfill não
+// sobrescreve o que o painel já cadastrou (evita apagar valor operacional).
 export function ensureBrownierPixKey<T extends StoreWithBusiness>(store: T): T {
+  if (!BROWNIER_PIX_KEY) return store;
   if (store.business.pixKey === BROWNIER_PIX_KEY) return store;
   return { ...store, business: { ...store.business, pixKey: BROWNIER_PIX_KEY } };
 }
@@ -44,6 +45,11 @@ export function ensureBrownierPixKey<T extends StoreWithBusiness>(store: T): T {
 export function ensureBrownierWhatsapp<T extends StoreWithBusiness>(store: T): T {
   if (store.business.whatsapp === BROWNIER_WHATSAPP) return store;
   return { ...store, business: { ...store.business, whatsapp: BROWNIER_WHATSAPP } };
+}
+
+export function ensureBrownierInstagram<T extends StoreWithBusiness>(store: T): T {
+  if (store.business.instagram === BROWNIER_INSTAGRAM) return store;
+  return { ...store, business: { ...store.business, instagram: BROWNIER_INSTAGRAM } };
 }
 
 export function ensureBrownierPaymentMethods<T extends StoreWithBusiness>(store: T): T {

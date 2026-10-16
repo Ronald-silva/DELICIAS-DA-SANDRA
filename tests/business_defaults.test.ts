@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BROWNIER_DELIVERY_ENABLED, BROWNIER_HOURS_VERSION, BROWNIER_PAYMENT_METHODS, BROWNIER_PICKUP_ADDRESS, BROWNIER_PIX_KEY, BROWNIER_RESPONSIBLE_NAME, BROWNIER_WHATSAPP, ensureBrownierDeliveryEnabled, ensureBrownierPaymentMethods, ensureBrownierPickupAddress, ensureBrownierOperatingHours, ensureBrownierPixKey, ensureBrownierResponsible, ensureBrownierWhatsapp } from "../src/lib/business-defaults.ts";
+import { BROWNIER_DELIVERY_ENABLED, BROWNIER_HOURS_VERSION, BROWNIER_INSTAGRAM, BROWNIER_PAYMENT_METHODS, BROWNIER_PICKUP_ADDRESS, BROWNIER_PIX_KEY, BROWNIER_RESPONSIBLE_NAME, BROWNIER_WHATSAPP, ensureBrownierDeliveryEnabled, ensureBrownierInstagram, ensureBrownierPaymentMethods, ensureBrownierPickupAddress, ensureBrownierOperatingHours, ensureBrownierPixKey, ensureBrownierResponsible, ensureBrownierWhatsapp } from "../src/lib/business-defaults.ts";
 import { INITIAL_OPERATING_HOURS } from "../src/lib/business-hours.ts";
 
 test("a semente comercial usa o endereço oficial de retirada", () => {
-  assert.equal(BROWNIER_PICKUP_ADDRESS, "Rua Professor Leite Gondim, 896, Antônio Bezerra, Fortaleza – CE, CEP 60360-332");
+  assert.equal(BROWNIER_PICKUP_ADDRESS, "Fortaleza – CE");
 });
 
 test("backfill persiste o endereço oficial sem alterar os demais dados comerciais", () => {
   const store = {
-    business: { name: "Brownieria Fortal", address: "", phone: "", hours: "", paymentMethods: ["PIX"] },
+    business: { name: "Delícias da Sandra", address: "", phone: "", hours: "", paymentMethods: ["PIX"] },
     products: [],
     orders: [],
   };
@@ -26,27 +26,35 @@ test("backfill é idempotente quando o endereço já está correto", () => {
   assert.equal(ensureBrownierPickupAddress(store), store);
 });
 
-test("backfill cadastra Mateus como responsável comercial", () => {
-  const store: { business: Record<string, unknown>; products: unknown[]; orders: unknown[] } = { business: { name: "Brownieria Fortal" }, products: [], orders: [] };
+test("backfill cadastra Sandra como responsável comercial", () => {
+  const store: { business: Record<string, unknown>; products: unknown[]; orders: unknown[] } = { business: { name: "Delícias da Sandra" }, products: [], orders: [] };
   const result = ensureBrownierResponsible(store);
-  assert.equal(BROWNIER_RESPONSIBLE_NAME, "Mateus");
-  assert.equal(result.business.responsibleName, "Mateus");
+  assert.equal(BROWNIER_RESPONSIBLE_NAME, "Sandra");
+  assert.equal(result.business.responsibleName, "Sandra");
   assert.equal(store.business.responsibleName, undefined);
 });
 
-test("backfill cadastra a chave PIX comercial oficial", () => {
-  const store: { business: Record<string, unknown>; products: unknown[]; orders: unknown[] } = { business: {}, products: [], orders: [] };
-  const result = ensureBrownierPixKey(store);
-  assert.equal(BROWNIER_PIX_KEY, "38.011.069/0001-93");
-  assert.equal(result.business.pixKey, BROWNIER_PIX_KEY);
-  assert.equal(store.business.pixKey, undefined);
+test("sem chave PIX oficial o backfill não sobrescreve o store", () => {
+  const store: { business: Record<string, unknown>; products: unknown[]; orders: unknown[] } = { business: { pixKey: "chave-temporaria" }, products: [], orders: [] };
+  assert.equal(BROWNIER_PIX_KEY, "");
+  assert.equal(ensureBrownierPixKey(store), store);
+  assert.equal(store.business.pixKey, "chave-temporaria");
 });
 
 test("backfill cadastra o WhatsApp oficial", () => {
   const store: { business: Record<string, unknown>; products: unknown[]; orders: unknown[] } = { business: { whatsapp: "" }, products: [], orders: [] };
   const result = ensureBrownierWhatsapp(store);
   assert.equal(result.business.whatsapp, BROWNIER_WHATSAPP);
+  assert.equal(BROWNIER_WHATSAPP, "+55 85 99003-808");
   assert.equal(ensureBrownierWhatsapp(result), result);
+});
+
+test("backfill cadastra o Instagram oficial", () => {
+  const store: { business: Record<string, unknown>; products: unknown[]; orders: unknown[] } = { business: { instagram: "" }, products: [], orders: [] };
+  const result = ensureBrownierInstagram(store);
+  assert.equal(result.business.instagram, BROWNIER_INSTAGRAM);
+  assert.equal(BROWNIER_INSTAGRAM, "@delicias_da_sandraoficial");
+  assert.equal(ensureBrownierInstagram(result), result);
 });
 
 test("backfill mantém somente PIX e dinheiro como formas aceitas", () => {
@@ -63,12 +71,12 @@ test("backfill mantém entregas desabilitadas conforme a informação comercial 
 
 test("backfill de horário: preenche o horário inicial quando não há operatingHours cadastrado", () => {
   const store: { business: Record<string, unknown>; products: unknown[]; orders: unknown[] } = {
-    business: { name: "Brownieria Fortal", hours: "" }, products: [], orders: [],
+    business: { name: "Delícias da Sandra", hours: "" }, products: [], orders: [],
   };
   const result = ensureBrownierOperatingHours(store);
   assert.deepEqual(result.business.operatingHours, INITIAL_OPERATING_HOURS);
   assert.equal(result.business.operatingHoursVersion, BROWNIER_HOURS_VERSION);
-  assert.equal(result.business.name, "Brownieria Fortal");
+  assert.equal(result.business.name, "Delícias da Sandra");
   // Store original não é mutado.
   assert.equal(store.business.operatingHours, undefined);
 });

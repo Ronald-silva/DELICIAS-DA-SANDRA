@@ -37,5 +37,5 @@ test("buildWhatsappLink gera URL wa.me com apenas dígitos e mensagem codificada
 test("buildWhatsappLink usa a mensagem padrão quando nenhuma é informada", () => {
   const link = buildWhatsappLink("85991234567");
   assert.ok(link?.startsWith("https://wa.me/5585991234567?text="));
-  assert.ok(link?.includes(encodeURIComponent("Brownieria Fortal")));
+  assert.ok(link?.includes(encodeURIComponent("Delícias da Sandra")));
 });

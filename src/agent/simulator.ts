@@ -148,7 +148,7 @@ export function parseSimulatorLine(raw: string): { ok: true; value: ParsedSimula
 export function buildSeedDomainStore(): AgentDomainStore {
   return {
     business: {
-      name: "Brownieria Fortal (simulador)",
+      name: "Delícias da Sandra (simulador)",
       pickupEnabled: true,
       deliveryEnabled: false,
       deliveryFee: 0,

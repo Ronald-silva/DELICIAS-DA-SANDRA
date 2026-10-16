@@ -1,4 +1,4 @@
-const DEFAULT_MESSAGE = "Olá! Vim pelo cardápio da Brownieria Fortal e gostaria de tirar uma dúvida.";
+const DEFAULT_MESSAGE = "Olá! Vim pelo cardápio da Delícias da Sandra e gostaria de tirar uma dúvida.";
 
 export function normalizeWhatsappNumber(raw: string | undefined | null): string {
   const digits = (raw ?? "").replace(/\D/g, "");

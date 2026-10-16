@@ -385,7 +385,7 @@ test("saída do simulador inclui messages humanizadas com dados públicos resolv
     const byEvent = (event: string) => outputs.find(o => o.result.event === event)!;
 
     // WELCOME possui nome do negócio semeado pelo simulador.
-    assert.match(byEvent("WELCOME").messages[0].text, /Brownieria Fortal \(simulador\)/);
+    assert.match(byEvent("WELCOME").messages[0].text, /Delícias da Sandra \(simulador\)/);
 
     // ITEM_ADDED resolve o nome do brownie pelo productId.
     assert.match(byEvent("ITEM_ADDED").messages[0].text, /Brownie de Brigadeiro/);
@@ -431,7 +431,7 @@ test("saída do simulador inclui presentationContext quando BF_SIMULATOR_DEBUG_C
     sim.sendLine({ channel: "simulator", contactId: "cliente-com-debug", messageId: "d1", action: { type: "START_CONVERSATION" } });
     const output = (await sim.nextOutput()) as { presentationContext?: { business?: { name?: string } } };
     assert.ok(output.presentationContext);
-    assert.equal(output.presentationContext?.business?.name, "Brownieria Fortal (simulador)");
+    assert.equal(output.presentationContext?.business?.name, "Delícias da Sandra (simulador)");
     await sim.close();
   });
 });

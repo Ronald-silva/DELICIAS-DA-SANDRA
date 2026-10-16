@@ -161,7 +161,7 @@ function domainStore(): AgentDomainStore {
 
 function acceptanceStore(): AgentDomainStore {
   const store = domainStore();
-  store.business.name = "Brownieria Fortal";
+  store.business.name = "Delícias da Sandra";
   store.business.address = BROWNIER_PICKUP_ADDRESS;
   return store;
 }
@@ -257,7 +257,7 @@ test("runtime WhatsApp responde endereço com dado real do Store e não consulta
   });
   assert.equal(result.policyResult?.event, "BUSINESS_ADDRESS");
   assert.equal(result.messages.length, 1);
-  assert.match(result.messages[0]?.text ?? "", /Rua Professor Leite Gondim, 896/);
+  assert.match(result.messages[0]?.text ?? "", /Fortaleza/);
   assert.equal(nvidiaClient.calls.length, 0);
 });
 
@@ -394,7 +394,7 @@ test("aceitação webhook: cada pergunta factual recebe uma única resposta real
   await deliver(handler, message("accept-menu", "Poderia me mandar o menu?"));
 
   assert.equal(sent.length, 4);
-  assert.equal(sent[0]?.text, "Boa noite! Seja bem-vindo à Brownieria Fortal 😊 Como posso ajudar?");
+  assert.equal(sent[0]?.text, "Boa noite! Seja bem-vindo à Delícias da Sandra 😊 Como posso ajudar?");
   assert.match(sent[1]?.text ?? "", new RegExp(BROWNIER_PICKUP_ADDRESS.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.equal(sent[2]?.text, "Ainda não tenho a confirmação do horário de retirada. Posso chamar um atendente para confirmar.");
   assert.match(sent[3]?.text ?? "", /Brownie/);
@@ -461,7 +461,7 @@ test("aceitação webhook: mensagens rápidas preservam ordem e um replay após 
     deliver(firstRuntimeHandler, payload("rapid-hours", "Posso retirar agora?")),
   ]);
   assert.equal(sent.length, 2);
-  assert.match(sent[0]?.text ?? "", /Rua Professor Leite Gondim/);
+  assert.match(sent[0]?.text ?? "", /Fortaleza/);
   assert.match(sent[1]?.text ?? "", /horário de retirada/i);
 
   const restartedHandler = createHandler();

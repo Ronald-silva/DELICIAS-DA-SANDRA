@@ -725,7 +725,7 @@ export function createTextConversationService(
           : factualIntent.kind === "OUT_OF_SCOPE_PRODUCT"
               ? { event: "OUT_OF_SCOPE_PRODUCT", messageKey: "OUT_OF_SCOPE_PRODUCT" }
             : factualIntent.kind === "RESPONSIBLE"
-              ? { event: "BUSINESS_RESPONSIBLE", messageKey: "BUSINESS_RESPONSIBLE", data: { name: tools.getBusinessResponsible?.() || "Mateus" } }
+              ? { event: "BUSINESS_RESPONSIBLE", messageKey: "BUSINESS_RESPONSIBLE", data: { name: tools.getBusinessResponsible?.() || "Sandra" } }
             : factualIntent.kind === "PAYMENT_OPTIONS"
               ? { event: "BUSINESS_PAYMENT_OPTIONS", messageKey: "BUSINESS_PAYMENT_OPTIONS", data: { options: tools.getBusiness().paymentMethods } }
             : factualIntent.kind === "PIX_KEY"
