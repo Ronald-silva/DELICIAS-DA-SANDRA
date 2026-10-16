@@ -3,7 +3,7 @@ dist/
 .env
 .env.*
 !.env.example
-data/brownies-fortal.demo.json
+data/delicias-da-sandra.demo.json
 .graphify/
 .vite-cache/
 .superpowers/
