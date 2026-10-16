@@ -1,8 +1,8 @@
-# Brownies Fortal — MVP de pedidos
+# Delícias da Sandra — MVP de pedidos
 
-MVP mobile-first para consulta de sabores, montagem de pedido e operação simples da Brownies Fortal.
+MVP mobile-first para consulta de sabores, montagem de pedido e operação simples da Delícias da Sandra.
 
-> Os sabores, imagens abstratas, preços, promoção e configurações iniciais são demonstrativos. Valide-os com a Brownies Fortal antes de qualquer uso comercial.
+> Os sabores, imagens abstratas, preços, promoção e configurações iniciais são demonstrativos. Valide-os com a Delícias da Sandra antes de qualquer uso comercial.
 
 ## O que está pronto
 
@@ -19,9 +19,9 @@ npm ci
 npm run dev
 ```
 
-Abra `http://localhost:3000`. Os dados são criados na primeira execução em `data/brownies-fortal.demo.json`; esse arquivo é ignorado pelo Git e pode ser removido para reiniciar a demonstração.
+Abra `http://localhost:3000`. Os dados são criados na primeira execução em `data/delicias-da-sandra.demo.json`; esse arquivo é ignorado pelo Git e pode ser removido para reiniciar a demonstração.
 
-Para acessar o painel, use **Área da equipe** no rodapé. Em desenvolvimento local, sem `ADMIN_ACCESS_CODE` definido, o código de demonstração é `brownies-demo` — **isso funciona apenas com `NODE_ENV` diferente de `production`**. Para qualquer ambiente publicado (demo pública, produção), defina uma variável forte antes de iniciar o servidor; sem ela — ou com o valor de demonstração — o servidor recusa iniciar em produção:
+Para acessar o painel, use **Área da equipe** no rodapé. Em desenvolvimento local, sem `ADMIN_ACCESS_CODE` definido, o código de demonstração é `sandra-demo` — **isso funciona apenas com `NODE_ENV` diferente de `production`**. Para qualquer ambiente publicado (demo pública, produção), defina uma variável forte antes de iniciar o servidor; sem ela — ou com o valor de demonstração — o servidor recusa iniciar em produção:
 
 ```bash
 ADMIN_ACCESS_CODE=<defina-um-codigo-forte> npm run dev
@@ -34,7 +34,7 @@ somente no `.env` local ou no provedor de deploy.
 
 | Variável | Necessária | Uso |
 | --- | --- | --- |
-| `ADMIN_ACCESS_CODE` | Sim, em produção | Protege as rotas administrativas. Obrigatória e não pode ser `brownies-demo` quando `NODE_ENV=production` — o servidor não inicia caso contrário. Em desenvolvimento, é opcional (fallback `brownies-demo`). |
+| `ADMIN_ACCESS_CODE` | Sim, em produção | Protege as rotas administrativas. Obrigatória e não pode ser `sandra-demo` quando `NODE_ENV=production` — o servidor não inicia caso contrário. Em desenvolvimento, é opcional (fallback `sandra-demo`). |
 | `ADMIN_SESSION_TTL_MS` | Não | Duração da sessão administrativa em milissegundos, padrão 4 horas. |
 | `ADMIN_LOGIN_WINDOW_MS` | Não | Janela do limite de tentativas de login, padrão 10 minutos (5 tentativas inválidas por IP). |
 | `PORT` | Não | Porta do servidor, padrão `3000`. |
@@ -86,7 +86,7 @@ npm run build
 Executa ações estruturadas do Conversation Engine pelo terminal, sem IA e sem WhatsApp — só para desenvolvimento local. Lê uma ação JSON por linha do stdin e imprime o resultado (sessão antes/depois, resultado do engine) em JSON por linha no stdout.
 
 ```bash
-BF_STORE_PATH=/tmp/brownies-sim.json npm run agent:simulate
+BF_STORE_PATH=/tmp/sandra-sim.json npm run agent:simulate
 ```
 
 Exemplo de entrada (uma linha):
@@ -95,7 +95,7 @@ Exemplo de entrada (uma linha):
 {"channel": "simulator", "contactId": "cliente-001", "messageId": "msg-001", "action": {"type": "START_CONVERSATION"}}
 ```
 
-Defina sempre `BF_STORE_PATH` para um arquivo temporário ao experimentar — sem essa variável, o simulador usa o mesmo arquivo de dados que o servidor real (`data/brownies-fortal.demo.json`).
+Defina sempre `BF_STORE_PATH` para um arquivo temporário ao experimentar — sem essa variável, o simulador usa o mesmo arquivo de dados que o servidor real (`data/delicias-da-sandra.demo.json`).
 
 Para inspecionar o contexto público resolvido pela camada de apresentação (nome do produto, opções de pagamento, etc.), rode com `BF_SIMULATOR_DEBUG_CONTEXT=1` — a saída passa a incluir `presentationContext` ao lado de `messages`.
 
@@ -109,7 +109,7 @@ Além de receber uma `action` estruturada, o simulador aceita uma segunda forma 
 
 ```bash
 echo '{"channel":"simulator","contactId":"cliente-1","messageId":"m1","text":"oi"}' |
-BF_STORE_PATH=/tmp/brownier-agent.json npm run agent:simulate
+BF_STORE_PATH=/tmp/sandra-agent.json npm run agent:simulate
 ```
 
 Antes de chegar ao Conversation Engine, esse texto passa pelo **Deterministic Message Interpreter** (`src/agent/deterministic-interpreter.ts`), que:
@@ -138,7 +138,7 @@ O **Text Conversation Service** (`src/agent/text-conversation.service.ts`) fica 
 - As sessões continuam apenas em memória (`InMemoryAgentSessionStore`) — reiniciar o simulador (ou o processo) descarta toda a política acumulada.
 
 ```bash
-BF_STORE_PATH=/tmp/brownies-sim.json BF_AGENT_MAX_MISUNDERSTANDINGS=3 npm run agent:simulate
+BF_STORE_PATH=/tmp/sandra-sim.json BF_AGENT_MAX_MISUNDERSTANDINGS=3 npm run agent:simulate
 ```
 
 Esta etapa não implementa IA nem integração com WhatsApp — apenas a política de contagem/handoff sobre o interpretador determinístico já existente.

@@ -3,7 +3,7 @@ import path from "node:path";
 
 export function resolveStorePath(cwd: string = process.cwd()): string {
   const configured = process.env.BF_STORE_PATH?.trim();
-  return configured ? path.resolve(cwd, configured) : path.join(cwd, "data", "brownies-fortal.demo.json");
+  return configured ? path.resolve(cwd, configured) : path.join(cwd, "data", "delicias-da-sandra.demo.json");
 }
 
 export async function saveStoreFile<T>(storePath: string, store: T): Promise<void> {
