@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getOperatingStatus } from "../src/agent/operating-status.ts";
-import { INITIAL_OPERATING_HOURS, type StructuredWeeklyHours } from "../src/lib/business-hours.ts";
+import { type StructuredWeeklyHours } from "../src/lib/business-hours.ts";
+import { SAMPLE_WEEKLY_HOURS } from "./fixture-weekly-hours.ts";
 
 // 2026-08-03 é uma segunda-feira; 2026-08-04 terça; 2026-08-01 sábado;
 // 2026-08-02 domingo (confirmado via `date -d`). America/Fortaleza é
@@ -11,7 +12,7 @@ import { INITIAL_OPERATING_HOURS, type StructuredWeeklyHours } from "../src/lib/
 const at = (iso: string) => new Date(iso);
 
 test("dia útil aberto: segunda-feira 15:00 está aberta, fecha às 22:00", () => {
-  const status = getOperatingStatus({ now: at("2026-08-03T15:00:00-03:00"), hours: INITIAL_OPERATING_HOURS });
+  const status = getOperatingStatus({ now: at("2026-08-03T15:00:00-03:00"), hours: SAMPLE_WEEKLY_HOURS });
   assert.equal(status.known, true);
   if (!status.known) return;
   assert.equal(status.isOpenNow, true);
@@ -21,7 +22,7 @@ test("dia útil aberto: segunda-feira 15:00 está aberta, fecha às 22:00", () =
 });
 
 test("1h da madrugada: fechado, com próxima abertura hoje às 14:00", () => {
-  const status = getOperatingStatus({ now: at("2026-08-04T01:00:00-03:00"), hours: INITIAL_OPERATING_HOURS });
+  const status = getOperatingStatus({ now: at("2026-08-04T01:00:00-03:00"), hours: SAMPLE_WEEKLY_HOURS });
   assert.equal(status.known, true);
   if (!status.known) return;
   assert.equal(status.isOpenNow, false);
@@ -31,7 +32,7 @@ test("1h da madrugada: fechado, com próxima abertura hoje às 14:00", () => {
 });
 
 test("antes da abertura (13:59) está fechado, abre hoje às 14:00", () => {
-  const status = getOperatingStatus({ now: at("2026-08-03T13:59:00-03:00"), hours: INITIAL_OPERATING_HOURS });
+  const status = getOperatingStatus({ now: at("2026-08-03T13:59:00-03:00"), hours: SAMPLE_WEEKLY_HOURS });
   assert.equal(status.known, true);
   if (!status.known) return;
   assert.equal(status.isOpenNow, false);
@@ -39,7 +40,7 @@ test("antes da abertura (13:59) está fechado, abre hoje às 14:00", () => {
 });
 
 test("exatamente no minuto de abertura (14:00) já está aberto", () => {
-  const status = getOperatingStatus({ now: at("2026-08-03T14:00:00-03:00"), hours: INITIAL_OPERATING_HOURS });
+  const status = getOperatingStatus({ now: at("2026-08-03T14:00:00-03:00"), hours: SAMPLE_WEEKLY_HOURS });
   assert.equal(status.known, true);
   if (!status.known) return;
   assert.equal(status.isOpenNow, true);
@@ -47,7 +48,7 @@ test("exatamente no minuto de abertura (14:00) já está aberto", () => {
 });
 
 test("exatamente no minuto de encerramento (22:00) já está fechado", () => {
-  const status = getOperatingStatus({ now: at("2026-08-03T22:00:00-03:00"), hours: INITIAL_OPERATING_HOURS });
+  const status = getOperatingStatus({ now: at("2026-08-03T22:00:00-03:00"), hours: SAMPLE_WEEKLY_HOURS });
   assert.equal(status.known, true);
   if (!status.known) return;
   assert.equal(status.isOpenNow, false);
@@ -57,7 +58,7 @@ test("exatamente no minuto de encerramento (22:00) já está fechado", () => {
 });
 
 test("depois do encerramento (22:30) está fechado, próxima abertura é outro dia", () => {
-  const status = getOperatingStatus({ now: at("2026-08-03T22:30:00-03:00"), hours: INITIAL_OPERATING_HOURS });
+  const status = getOperatingStatus({ now: at("2026-08-03T22:30:00-03:00"), hours: SAMPLE_WEEKLY_HOURS });
   assert.equal(status.known, true);
   if (!status.known) return;
   assert.equal(status.isOpenNow, false);
@@ -65,7 +66,7 @@ test("depois do encerramento (22:30) está fechado, próxima abertura é outro d
 });
 
 test("sábado: fechado o dia inteiro, próxima abertura segunda às 14:00", () => {
-  const status = getOperatingStatus({ now: at("2026-08-01T09:00:00-03:00"), hours: INITIAL_OPERATING_HOURS });
+  const status = getOperatingStatus({ now: at("2026-08-01T09:00:00-03:00"), hours: SAMPLE_WEEKLY_HOURS });
   assert.equal(status.known, true);
   if (!status.known) return;
   assert.equal(status.isOpenNow, false);
@@ -74,7 +75,7 @@ test("sábado: fechado o dia inteiro, próxima abertura segunda às 14:00", () =
 });
 
 test("domingo: fechado o dia inteiro (DAY_CLOSED), próxima abertura segunda 14:00", () => {
-  const status = getOperatingStatus({ now: at("2026-08-02T10:00:00-03:00"), hours: INITIAL_OPERATING_HOURS });
+  const status = getOperatingStatus({ now: at("2026-08-02T10:00:00-03:00"), hours: SAMPLE_WEEKLY_HOURS });
   assert.equal(status.known, true);
   if (!status.known) return;
   assert.equal(status.isOpenNow, false);
@@ -84,7 +85,7 @@ test("domingo: fechado o dia inteiro (DAY_CLOSED), próxima abertura segunda 14:
 });
 
 test("dois intervalos no mesmo dia: almoço fechado entre os dois", () => {
-  const hours: StructuredWeeklyHours = { ...INITIAL_OPERATING_HOURS, TUE: [{ open: "09:00", close: "12:00" }, { open: "14:00", close: "18:00" }] };
+  const hours: StructuredWeeklyHours = { ...SAMPLE_WEEKLY_HOURS, TUE: [{ open: "09:00", close: "12:00" }, { open: "14:00", close: "18:00" }] };
 
   const morning = getOperatingStatus({ now: at("2026-08-04T10:00:00-03:00"), hours });
   assert.equal(morning.known, true);
@@ -102,7 +103,7 @@ test("dois intervalos no mesmo dia: almoço fechado entre os dois", () => {
 });
 
 test("intervalo atravessando meia-noite: aberto na noite de segunda e na madrugada de terça", () => {
-  const hours: StructuredWeeklyHours = { ...INITIAL_OPERATING_HOURS, MON: [{ open: "23:50", close: "00:20" }] };
+  const hours: StructuredWeeklyHours = { ...SAMPLE_WEEKLY_HOURS, MON: [{ open: "23:50", close: "00:20" }] };
 
   const mondayNight = getOperatingStatus({ now: at("2026-08-03T23:55:00-03:00"), hours });
   assert.equal(mondayNight.known, true);
@@ -116,7 +117,7 @@ test("intervalo atravessando meia-noite: aberto na noite de segunda e na madruga
 // Requisito explícito: não basta olhar só os intervalos do dia atual — às
 // 00:20 de terça também é preciso checar o intervalo iniciado segunda.
 test("dia anterior: intervalo de segunda que cruza a meia-noite cobre a madrugada de terça até o fechamento, não depois", () => {
-  const hours: StructuredWeeklyHours = { ...INITIAL_OPERATING_HOURS, MON: [{ open: "23:50", close: "00:20" }], TUE: [] };
+  const hours: StructuredWeeklyHours = { ...SAMPLE_WEEKLY_HOURS, MON: [{ open: "23:50", close: "00:20" }], TUE: [] };
 
   const stillOpenFromMonday = getOperatingStatus({ now: at("2026-08-04T00:19:00-03:00"), hours });
   assert.equal(stillOpenFromMonday.known, true);
@@ -147,7 +148,7 @@ test("timezone correto mesmo com o relógio do servidor calculado como instante 
   const original = process.env.TZ;
   process.env.TZ = "UTC";
   try {
-    const status = getOperatingStatus({ now: new Date("2026-08-03T18:00:00Z"), hours: INITIAL_OPERATING_HOURS });
+    const status = getOperatingStatus({ now: new Date("2026-08-03T18:00:00Z"), hours: SAMPLE_WEEKLY_HOURS });
     assert.equal(status.known, true);
     if (!status.known) return;
     assert.equal(status.weekday, "MON");

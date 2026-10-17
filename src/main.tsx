@@ -7,6 +7,7 @@ import './experience.css';
 import './admin.css';
 import './admin-sprint4.css';
 import './polish.css';
+import './home.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

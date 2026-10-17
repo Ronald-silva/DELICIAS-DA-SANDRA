@@ -9,7 +9,8 @@ import { createTextConversationService } from "../src/agent/text-conversation.se
 import { createAgentConversationService } from "../src/agent/conversation.service.ts";
 import { InMemoryAgentSessionStore } from "../src/agent/session.store.ts";
 import { createAgentTools, type AgentDomainStore } from "../src/agent/tools.ts";
-import { INITIAL_OPERATING_HOURS, type StructuredWeeklyHours } from "../src/lib/business-hours.ts";
+import { type StructuredWeeklyHours } from "../src/lib/business-hours.ts";
+import { SAMPLE_WEEKLY_HOURS } from "./fixture-weekly-hours.ts";
 
 const CH = "simulator";
 
@@ -35,28 +36,28 @@ function makeStack(operatingHours: StructuredWeeklyHours | undefined, now: () =>
 }
 
 test('aberto agora: "Sim, estamos abertos agora. Você pode retirar até às 22h."', async () => {
-  const { textService } = makeStack(INITIAL_OPERATING_HOURS, () => new Date("2026-08-03T15:00:00-03:00"));
+  const { textService } = makeStack(SAMPLE_WEEKLY_HOURS, () => new Date("2026-08-03T15:00:00-03:00"));
   const result = await textService.processText({ channel: CH, contactId: "hours-open", text: "Posso retirar pedido agora?" });
   assert.equal(result.policyResult?.messageKey, "BUSINESS_OPEN_NOW");
   assert.equal(result.messages[0]?.text, "Sim, estamos abertos agora. Você pode retirar até às 22h.");
 });
 
 test('fechado, abre mais tarde hoje: "No momento estamos fechados. Abrimos hoje às 14h."', async () => {
-  const { textService } = makeStack(INITIAL_OPERATING_HOURS, () => new Date("2026-08-04T01:00:00-03:00"));
+  const { textService } = makeStack(SAMPLE_WEEKLY_HOURS, () => new Date("2026-08-04T01:00:00-03:00"));
   const result = await textService.processText({ channel: CH, contactId: "hours-closed-today", text: "Vocês estão abertos?" });
   assert.equal(result.policyResult?.messageKey, "BUSINESS_CLOSED_TODAY");
   assert.equal(result.messages[0]?.text, "No momento estamos fechados. Abrimos hoje às 14h.");
 });
 
 test('fechado, próxima abertura em outro dia: "...Nosso próximo horário de atendimento é segunda-feira, às 14h."', async () => {
-  const { textService } = makeStack(INITIAL_OPERATING_HOURS, () => new Date("2026-08-02T10:00:00-03:00")); // domingo
+  const { textService } = makeStack(SAMPLE_WEEKLY_HOURS, () => new Date("2026-08-02T10:00:00-03:00")); // domingo
   const result = await textService.processText({ channel: CH, contactId: "hours-closed-other-day", text: "Que horas vocês abrem?" });
   assert.equal(result.policyResult?.messageKey, "BUSINESS_CLOSED_OTHER_DAY");
   assert.equal(result.messages[0]?.text, "No momento estamos fechados. Nosso próximo horário de atendimento é segunda-feira, às 14h.");
 });
 
 test("pergunta composta de entrega e retirada amanhã responde os dois pontos", async () => {
-  const { textService } = makeStack(INITIAL_OPERATING_HOURS, () => new Date("2026-08-07T15:00:00-03:00")); // sexta-feira; amanhã é sábado
+  const { textService } = makeStack(SAMPLE_WEEKLY_HOURS, () => new Date("2026-08-07T15:00:00-03:00")); // sexta-feira; amanhã é sábado
   const result = await textService.processText({
     channel: CH,
     contactId: "delivery-and-tomorrow",
@@ -69,7 +70,7 @@ test("pergunta composta de entrega e retirada amanhã responde os dois pontos", 
 });
 
 test("pergunta só sobre entrega continua respondendo uma única mensagem", async () => {
-  const { textService } = makeStack(INITIAL_OPERATING_HOURS, () => new Date("2026-08-07T15:00:00-03:00"));
+  const { textService } = makeStack(SAMPLE_WEEKLY_HOURS, () => new Date("2026-08-07T15:00:00-03:00"));
   const result = await textService.processText({ channel: CH, contactId: "delivery-only", text: "vocês fazem entregas?" });
   assert.equal(result.policyResult?.messageKey, "BUSINESS_DELIVERY_UNAVAILABLE");
   assert.deepEqual(result.messages.map(message => message.text), [
@@ -85,7 +86,7 @@ test('sem configuração: "Ainda não tenho a confirmação do horário de retir
 });
 
 test("pergunta de horário nunca aciona o Conversation Engine nem passa pelo LLM (finalSource é POLICY)", async () => {
-  const { textService } = makeStack(INITIAL_OPERATING_HOURS, () => new Date("2026-08-03T10:00:00-03:00"));
+  const { textService } = makeStack(SAMPLE_WEEKLY_HOURS, () => new Date("2026-08-03T10:00:00-03:00"));
   const result = await textService.processText({ channel: CH, contactId: "hours-policy-source", text: "Está aberto?" });
   assert.equal(result.interpretation?.finalSource, "POLICY");
   assert.equal(result.interpretation?.llm, undefined);

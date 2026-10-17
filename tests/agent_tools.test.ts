@@ -6,7 +6,7 @@ import {
   type AgentDomainStore,
 } from "../src/agent/tools.ts";
 import { createOrder as officialCreateOrder, type CreateOrderInput, type CreateOrderResult } from "../src/lib/orders.ts";
-import { INITIAL_OPERATING_HOURS } from "../src/lib/business-hours.ts";
+import { SAMPLE_WEEKLY_HOURS } from "./fixture-weekly-hours.ts";
 
 function product(overrides: Partial<AgentDomainStore["products"][number]> = {}) {
   return {
@@ -253,7 +253,7 @@ test("[integração] tools.createOrder e orders.ts oficial calculam o mesmo tota
 // --- getOperatingStatus ---
 
 test("getOperatingStatus delega para operating-status.ts usando o relógio injetado e o horário cadastrado", () => {
-  const store = makeStore({ business: { ...makeStore().business, operatingHours: INITIAL_OPERATING_HOURS } });
+  const store = makeStore({ business: { ...makeStore().business, operatingHours: SAMPLE_WEEKLY_HOURS } });
   const tools = createAgentTools({ store, now: () => new Date("2026-08-03T15:00:00-03:00") }); // segunda, 15h
   const status = tools.getOperatingStatus!();
   assert.equal(status.known, true);
@@ -261,7 +261,7 @@ test("getOperatingStatus delega para operating-status.ts usando o relógio injet
 });
 
 test("getTomorrowPickupSchedule retorna o horário real do próximo dia no fuso da loja", () => {
-  const store = makeStore({ business: { ...makeStore().business, operatingHours: INITIAL_OPERATING_HOURS } });
+  const store = makeStore({ business: { ...makeStore().business, operatingHours: SAMPLE_WEEKLY_HOURS } });
   const tools = createAgentTools({ store, now: () => new Date("2026-08-03T10:00:00-03:00") }); // segunda; amanhã é terça
   assert.deepEqual(tools.getTomorrowPickupSchedule!(), { weekday: "terça-feira", hours: "14h às 22h", open: true });
 });

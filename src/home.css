@@ -1,0 +1,500 @@
+/* ===========================================================================
+   Vitrine pública — camada visual da página principal.
+
+   Fica num arquivo próprio, carregado DEPOIS de experience.css e polish.css,
+   porque as decisões de contraste e de alvo de toque já resolvidas lá
+   continuam valendo: aqui só entram composição, ritmo e movimento. Nada nesta
+   folha baixa contraste de texto nem encolhe área clicável.
+
+   Direção: confeitaria de bairro, não template de marketplace. Papel quente,
+   filete dourado vindo do anel da logo, e blocos de chocolate escuro que dão
+   respiro entre as seções claras — claro, claro, escuro, claro, escuro.
+   =========================================================================== */
+
+.vitrine {
+  /* O selo da marca é marrom quase preto; o dourado vem do anel da logo. */
+  --v-paper: #fffaf4;
+  --v-paper-deep: #fdf1e6;
+  --v-ink: #2b1810;
+  --v-gold: #c9a66b;          /* 7.4:1 sobre --v-ink */
+  --v-gold-deep: #8a6630;     /* 4.6:1 sobre papel — versão para texto claro */
+  --v-rule: #e7d3c6;
+  --v-pad-block: 72px;
+  /* Textura sutil: ruído gerado em SVG, sem requisição nem dependência. */
+  --v-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background: var(--v-paper);
+  display: block;
+}
+
+/* As seções da vitrine são faixas de borda a borda do contêiner, não cartões
+   flutuando dentro de outro cartão — era isso que dava ar de template. */
+.vitrine > section,
+.vitrine > .v-footer {
+  padding-inline: calc(var(--content-gutter) + 20px);
+}
+
+/* Cada faixa carrega o próprio respiro inferior; a de cima nunca soma com
+   a de baixo, que era o que abria vãos de 150px no meio da página. */
+.v-section { padding-block: 0 var(--v-pad-block); }
+
+/* As duas faixas escuras ("Como pedir" e o rodapé) iam de ponta a ponta do
+   contêiner, de canto vivo — os únicos blocos retangulares no meio de cards
+   arredondados. Viram cartões: recuam o mesmo tanto que a sarjeta e devolvem
+   essa medida no recuo interno, de modo que o texto dentro delas continua
+   alinhado com o das seções claras. */
+.vitrine > .v-steps,
+.vitrine > .v-footer {
+  margin-inline: var(--content-gutter);
+  padding-inline: 20px;
+  border-radius: 22px;
+}
+.vitrine > .v-footer { margin-bottom: var(--content-gutter); }
+
+/* --------------------------------------------------------------------------
+   Cabeçalho de seção: olho-mágico, título e um filete dourado curto.
+   -------------------------------------------------------------------------- */
+.v-head { max-width: 640px; }
+.v-eyebrow {
+  margin: 0 0 10px;
+  color: var(--v-gold-deep);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.v-head h2 {
+  margin: 0;
+  font-size: clamp(27px, 3.4vw, 40px);
+  line-height: 1.06;
+  color: var(--brand-brown-dark);
+}
+.v-head p {
+  margin: 12px 0 0;
+  max-width: 54ch;
+  color: var(--muted);
+  line-height: 1.65;
+}
+/* A linha de título + atalho não pode herdar o max-width do .v-head, senão
+   o atalho desce para baixo do título em vez de ir para a direita. */
+.v-head-row {
+  max-width: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------------------
+   Hero. Assimétrico: a coluna de texto é mais larga que a do selo, e o selo
+   sobe um pouco acima da linha de base do texto.
+   -------------------------------------------------------------------------- */
+.v-hero {
+  position: relative;
+  padding-block: clamp(30px, 4vw, 52px) var(--v-pad-block);
+  background:
+    radial-gradient(70% 120% at 82% 28%, rgb(232 160 176 / .13) 0%, transparent 62%),
+    radial-gradient(60% 100% at 0% 0%, rgb(201 166 107 / .10) 0%, transparent 55%);
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: center;
+}
+.v-hero-eyebrow {
+  margin: 0 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--v-gold-deep);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+/* Filete curto que repete o anel dourado da logo. */
+.v-hero-eyebrow::before {
+  content: "";
+  width: 34px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--brand-pink), var(--v-gold));
+  border-radius: 2px;
+}
+.v-hero h1 {
+  margin: 0;
+  font-size: clamp(37px, 5.6vw, 64px);
+  line-height: .99;
+  letter-spacing: -.02em;
+  color: var(--brand-brown-dark);
+  text-wrap: balance;
+}
+.v-hero-lead {
+  margin: 18px 0 0;
+  max-width: 46ch;
+  color: var(--muted);
+  font-size: clamp(15px, 1.3vw, 17px);
+  line-height: 1.66;
+}
+.v-hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.v-hero-actions .primary,
+.v-hero-actions .secondary { padding: 14px 20px; border-radius: 11px; }
+/* A seta anda um passo quando o botão recebe atenção — devolve a ação sem
+   mover o rótulo. */
+.v-hero-actions .primary span[aria-hidden] { transition: transform .22s ease; }
+@media (hover: hover) and (pointer: fine) {
+  .v-hero-actions .primary:not(:disabled):hover span[aria-hidden] { transform: translateX(3px); }
+}
+
+/* Faixa de fatos reais: endereço, horário, pagamento. Só aparece o que está
+   cadastrado — cada item é renderizado condicionalmente no componente. */
+.v-facts {
+  margin: 32px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  list-style: none;
+  border-top: 1px solid var(--v-rule);
+  padding-top: 20px;
+}
+.v-fact { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.v-fact b {
+  color: var(--v-gold-deep);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.v-fact span { color: var(--brand-brown); font-size: 13.5px; line-height: 1.45; }
+
+/* --------------------------------------------------------------------------
+   O selo. Enquanto não há foto oficial, a abertura da página é a identidade
+   real da marca — nunca uma foto de banco de imagens posando de produto.
+   -------------------------------------------------------------------------- */
+.v-seal {
+  position: relative;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  gap: 18px;
+  min-height: 420px;
+  padding: 52px 30px;
+  border-radius: 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 18%, #52301f 0%, #3a2015 45%, var(--v-ink) 100%);
+  box-shadow: 0 22px 48px rgb(43 24 16 / .22);
+}
+/* Grão por cima do gradiente, para o marrom não ficar com cara de CSS. */
+.v-seal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--v-grain);
+  opacity: .055;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+/* Anel dourado duplo, ecoando a moldura da própria logo. */
+.v-seal::before {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border: 1px solid rgb(201 166 107 / .34);
+  border-radius: 13px;
+  pointer-events: none;
+}
+.v-seal img {
+  position: relative;
+  z-index: 1;
+  width: clamp(158px, 22vw, 230px);
+  height: auto;
+  border-radius: 50%;
+  box-shadow: 0 10px 30px rgb(0 0 0 / .3);
+}
+.v-seal figcaption {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 7px;
+  justify-items: center;
+  text-align: center;
+}
+.v-seal figcaption span {
+  max-width: 30ch;
+  color: #f1dfd2;
+  font-size: 13px;
+  letter-spacing: .02em;
+  line-height: 1.5;
+}
+
+/* Quando existir foto oficial cadastrada, ela ocupa o lugar do selo. */
+.v-hero-photo {
+  position: relative;
+  margin: 0;
+  min-height: 420px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--v-ink);
+  box-shadow: 0 22px 48px rgb(43 24 16 / .22);
+}
+.v-hero-photo img { display: block; width: 100%; height: 100%; min-height: 420px; object-fit: cover; transition: transform .6s ease; }
+@media (hover: hover) and (pointer: fine) { .v-hero-photo:hover img { transform: scale(1.04); } }
+
+/* --------------------------------------------------------------------------
+   Cardápio em destaque.
+   -------------------------------------------------------------------------- */
+.v-menu-grid {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.vitrine .product-card {
+  border-radius: 16px;
+  padding: 11px;
+  background: #fff;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .18s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .vitrine .product-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgb(43 24 16 / .11); }
+}
+.vitrine .product-photo { height: 200px; border-radius: 12px; }
+/* Etiqueta permanente quando a foto ainda é ilustrativa: o visitante nunca
+   deve achar que está vendo o produto real da Sandra. */
+.photo-note {
+  position: absolute;
+  left: 9px;
+  bottom: 9px;
+  z-index: 1;
+  padding: 4px 8px;
+  border-radius: 99px;
+  background: rgb(43 24 16 / .82);
+  color: #f3e3d8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.v-menu-all { margin-top: 26px; }
+/* A área do produto virou <a> para ser rastreável; precisa parecer
+   exatamente o botão que era. */
+a.product-main { display: block; color: inherit; text-decoration: none; }
+/* polish.css já tira o sublinhado dos controles que viraram link, mas só nos
+   seletores da vitrine antiga (.hero-actions). Os botões desta página são
+   <a> de navegação interna — precisam parecer botão, não link de texto. */
+.vitrine a.primary, .vitrine a.secondary, .vitrine a.add-icon, .vitrine a.cart-button { text-decoration: none; }
+
+/* Links de contato em texto corrido ficam com ~18px de altura. Num dedo isso
+   é pouco — e são justamente o WhatsApp e o Instagram, o contato real da
+   loja. Onde o ponteiro é grosso, ganham a mesma área de 44px que polish.css
+   já garante aos botões. */
+@media (pointer: coarse) {
+  .v-info-card a, .v-footer-col a { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
+/* --------------------------------------------------------------------------
+   Como pedir — faixa escura, que corta o papel e dá respiro.
+   -------------------------------------------------------------------------- */
+.v-steps {
+  position: relative;
+  margin-bottom: var(--v-pad-block);
+  padding-block: clamp(48px, 6vw, 72px);
+  overflow: hidden;
+  background: radial-gradient(120% 140% at 12% 0%, #4a2b1b 0%, var(--v-ink) 62%);
+  color: #f6e8dd;
+}
+.v-steps::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--v-grain);
+  opacity: .05;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.v-steps > * { position: relative; z-index: 1; }
+.v-steps .v-eyebrow { color: var(--v-gold); }
+.v-steps h2 { color: #fff6ee; }
+.v-steps-list {
+  margin: 34px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px;
+}
+.v-steps-list li { position: relative; padding-top: 18px; }
+.v-steps-list li::before { content: ""; position: absolute; inset: 0 0 auto; height: 1px; transform-origin: left center; background: rgb(201 166 107 / .4); }
+.v-steps-list b {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--v-gold);
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
+}
+.v-steps-list strong { display: block; margin-bottom: 5px; color: #fff6ee; font-size: 15px; }
+.v-steps-list span { color: #e3cdbe; font-size: 13.5px; line-height: 1.6; }
+
+/* --------------------------------------------------------------------------
+   Informações úteis — só o que está cadastrado no sistema.
+   -------------------------------------------------------------------------- */
+.v-info-grid {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+.v-info-card {
+  padding: 22px;
+  border: 1px solid var(--v-rule);
+  border-radius: 16px;
+  background: #fff;
+}
+.v-info-card b {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--v-gold-deep);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.v-info-card p { margin: 0; color: var(--brand-brown); font-size: 14px; line-height: 1.6; }
+.v-info-card p + p { margin-top: 6px; color: var(--muted); font-size: 12.5px; }
+.v-info-card address { font-style: normal; }
+.v-info-card a { color: var(--brand-pink-text); font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.v-info-card a:hover { color: var(--brand-brown-dark); }
+
+/* --------------------------------------------------------------------------
+   Assistente — discreta e honesta sobre o que é.
+   -------------------------------------------------------------------------- */
+.v-assistant {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 26px;
+  flex-wrap: wrap;
+  padding: 26px 28px;
+  border: 1px solid var(--v-rule);
+  border-radius: 16px;
+  background: linear-gradient(112deg, var(--v-paper-deep), #fff 72%);
+}
+.v-assistant h2 { margin: 0; font-size: 23px; color: var(--brand-brown-dark); }
+.v-assistant p { margin: 7px 0 0; max-width: 56ch; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+.v-assistant .secondary { flex: 0 0 auto; }
+
+/* --------------------------------------------------------------------------
+   Rodapé.
+   -------------------------------------------------------------------------- */
+.v-footer {
+  position: relative;
+  padding-block: 52px 40px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 34px;
+  align-items: start;
+  background: var(--v-ink);
+  color: #e8d5c8;
+  text-align: left;
+}
+.v-footer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--v-grain);
+  opacity: .05;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.v-footer > * { position: relative; z-index: 1; }
+.v-footer-mark { width: 84px; height: auto; border-radius: 50%; }
+.v-footer-body { display: grid; gap: 18px; min-width: 0; }
+.v-footer-name { margin: 0; color: #fff6ee; font-family: 'DM Serif Display', serif; font-size: 25px; font-weight: 400; }
+.v-footer-cols { display: flex; flex-wrap: wrap; gap: 14px 42px; }
+.v-footer-col { display: grid; gap: 4px; min-width: 0; }
+.v-footer-col b {
+  color: var(--v-gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.v-footer-col span, .v-footer-col address { color: #e0cabb; font-size: 13px; line-height: 1.55; font-style: normal; }
+.v-footer a { color: #fff6ee; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.v-footer a:hover { color: var(--v-gold); }
+.v-footer-legal { margin: 0; color: #b89b8a; font-size: 11.5px; line-height: 1.6; }
+
+/* ===========================================================================
+   Movimento.
+
+   Uma regra acima de todas: movimento NUNCA esconde conteúdo. A primeira
+   versão desta folha revelava as seções com `animation-timeline: view()`, e
+   a faixa "Como pedir" ficou presa em `opacity: 0` — invisível para o
+   visitante e para o renderizador do Google, que é justamente quem esta
+   página precisa convencer. Animação que começa em opacidade zero depende de
+   um gatilho para terminar; numa vitrine indexável, isso é risco sem retorno.
+
+   Sobrou o que não pode falhar:
+   1. Abertura do hero, por tempo, com `both` — sempre termina em opacity 1.
+   2. Resposta ao toque e ao ponteiro (já herdada de polish.css).
+   3. Um filete dourado que cresce ao rolar — decoração pura: se nunca
+      animar, o filete simplesmente já está lá.
+   =========================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes v-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  .v-hero-copy > *,
+  .v-hero > figure {
+    animation: v-rise .62s cubic-bezier(.22, .8, .3, 1) both;
+  }
+  .v-hero-copy > *:nth-child(1) { animation-delay: .04s; }
+  .v-hero-copy > *:nth-child(2) { animation-delay: .10s; }
+  .v-hero-copy > *:nth-child(3) { animation-delay: .16s; }
+  .v-hero-copy > *:nth-child(4) { animation-delay: .22s; }
+  .v-hero-copy > *:nth-child(5) { animation-delay: .28s; }
+  .v-hero > figure { animation-delay: .12s; }
+
+  /* Decoração: o filete de cada passo se desenha conforme a seção sobe. Sem
+     suporte a timeline de rolagem, ou com a animação travada, o filete fica
+     no estado final — nenhum texto depende disso. */
+  @supports (animation-timeline: view()) {
+    @keyframes v-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .v-steps-list li::before {
+      animation: v-draw .9s linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 34%;
+    }
+  }
+}
+
+/* ===========================================================================
+   Respostas por largura.
+   =========================================================================== */
+@media (max-width: 900px) {
+  .vitrine { --v-pad-block: 54px; }
+  .v-hero { grid-template-columns: 1fr; }
+  /* No celular o selo vem primeiro: a marca abre a página. */
+  .v-hero > figure { order: -1; min-height: 0; }
+  .v-seal { min-height: 0; padding: 32px 22px; gap: 14px; }
+  .v-hero-photo, .v-hero-photo img { min-height: 220px; }
+  .v-steps-list { grid-template-columns: 1fr; gap: 20px; }
+  .v-menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v-footer { grid-template-columns: 1fr; gap: 22px; }
+}
+
+@media (max-width: 560px) {
+  .vitrine { --v-pad-block: 42px; }
+  .v-hero { padding-block: 28px var(--v-pad-block); }
+  .v-hero-actions { gap: 10px; }
+  .v-hero-actions .primary, .v-hero-actions .secondary { flex: 1 1 100%; }
+  .v-facts { gap: 14px 24px; }
+  .v-menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .vitrine .product-photo { height: 140px; }
+  .v-menu-all .secondary { width: 100%; }
+  .v-assistant { padding: 22px; align-items: stretch; flex-direction: column; }
+  .v-assistant .secondary { width: 100%; }
+  .v-info-grid { grid-template-columns: 1fr; }
+}

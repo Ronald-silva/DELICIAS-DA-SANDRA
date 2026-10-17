@@ -36,15 +36,15 @@ export type TimeRange = { open: string; close: string };
 // separada para não abrir espaço para os dois campos se contradizerem.
 export type StructuredWeeklyHours = Record<Weekday, TimeRange[]>;
 
-// Horário comercial oficial: entregas/atendimento de segunda a sexta,
-// 14h–22h; sábado e domingo fechados.
+// Horário comercial oficial: atendimento de segunda a sexta, 8h–17h, e
+// sábado, 8h–12h; domingo fechado.
 export const INITIAL_OPERATING_HOURS: StructuredWeeklyHours = {
-  MON: [{ open: "14:00", close: "22:00" }],
-  TUE: [{ open: "14:00", close: "22:00" }],
-  WED: [{ open: "14:00", close: "22:00" }],
-  THU: [{ open: "14:00", close: "22:00" }],
-  FRI: [{ open: "14:00", close: "22:00" }],
-  SAT: [],
+  MON: [{ open: "08:00", close: "17:00" }],
+  TUE: [{ open: "08:00", close: "17:00" }],
+  WED: [{ open: "08:00", close: "17:00" }],
+  THU: [{ open: "08:00", close: "17:00" }],
+  FRI: [{ open: "08:00", close: "17:00" }],
+  SAT: [{ open: "08:00", close: "12:00" }],
   SUN: [],
 };
 
@@ -168,4 +168,51 @@ export function validateStructuredWeeklyHours(hours: unknown): BusinessHoursVali
 
 export function isStructuredWeeklyHours(value: unknown): value is StructuredWeeklyHours {
   return validateStructuredWeeklyHours(value).length === 0;
+}
+
+// Rótulos curtos e capitalizados, para a vitrine. Os longos minúsculos de
+// WEEKDAY_LABELS_PT_BR continuam servindo ao atendimento, que escreve frases.
+export const WEEKDAY_SHORT_LABELS_PT_BR: Record<Weekday, string> = {
+  MON: "Segunda",
+  TUE: "Terça",
+  WED: "Quarta",
+  THU: "Quinta",
+  FRI: "Sexta",
+  SAT: "Sábado",
+  SUN: "Domingo",
+};
+
+// Resumo de uma linha para a página pública: agrupa dias seguidos que têm
+// exatamente o mesmo intervalo, de modo que o horário oficial de segunda a
+// sexta vire "Segunda a sexta, 8h às 17h" em vez das sete linhas de
+// formatWeeklyHoursBR. Dias fechados simplesmente não aparecem — a página não
+// afirma nada sobre eles.
+//
+// Devolve string vazia quando não há nenhum dia aberto, para que quem chama
+// possa omitir o bloco inteiro em vez de mostrar um horário em branco.
+export function summarizeWeeklyHoursBR(hours: StructuredWeeklyHours): string {
+  const key = (weekday: Weekday) => {
+    const ranges = hours[weekday];
+    return Array.isArray(ranges) && ranges.length > 0
+      ? ranges.map(range => `${range.open}-${range.close}`).join("|")
+      : "";
+  };
+  const groups: { days: Weekday[]; key: string }[] = [];
+  for (const weekday of WEEKDAYS) {
+    const current = key(weekday);
+    const last = groups.at(-1);
+    if (last && last.key === current) last.days.push(weekday);
+    else groups.push({ days: [weekday], key: current });
+  }
+  return groups
+    .filter(group => group.key !== "")
+    .map(group => {
+      const first = WEEKDAY_SHORT_LABELS_PT_BR[group.days[0]!];
+      const label = group.days.length > 1
+        ? `${first} a ${WEEKDAY_SHORT_LABELS_PT_BR[group.days.at(-1)!]!.toLowerCase()}`
+        : first;
+      const times = hours[group.days[0]!]!.map(range => `${formatTimeBR(range.open)} às ${formatTimeBR(range.close)}`).join(" e ");
+      return `${label}, ${times}`;
+    })
+    .join(" · ");
 }

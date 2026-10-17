@@ -1,8 +1,9 @@
 import { FormEvent, Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clipboard, GiftBox, MessageCircle, Minus, Plus, RotateCcw, Send } from "lucide-react";
 import { calculateLinePrice, type PricingProduct } from "./lib/pricing";
-import { productImageSrc } from "./lib/media";
+import { hasRealProductImage, productImageSrc } from "./lib/media";
+import { isStructuredWeeklyHours, summarizeWeeklyHoursBR, type StructuredWeeklyHours } from "./lib/business-hours";
 import { formatCurrency } from "./lib/format";
 import { AdminOperations } from "./AdminOperations";
 import { buildOrderWhatsappLink, buildOrderWhatsappMessage, buildWhatsappLink, isValidWhatsappNumber } from "./lib/whatsapp";
@@ -10,7 +11,7 @@ import { paymentLabel } from "./lib/payment";
 import { maskCurrencyBRL, maskPhoneBR } from "./lib/mask";
 
 type Product = PricingProduct & { id: string; slug: string; name: string; description: string; category: string; imageUrl: string; isActive: boolean; isAvailable: boolean; isFeatured: boolean; isDay?: boolean; displayOrder: number; ingredients?: string; allergens?: string; updatedAt: string };
-type Business = { name: string; tagline: string; description: string; phone: string; whatsapp: string; responsibleName?: string; address: string; addressReference?: string; hours: string; instagram: string; pickupEnabled: boolean; deliveryEnabled: boolean; pickupSlots: string[]; paymentMethods: string[]; deliveryFee: number; receivedMessage: string; availabilityNotice: string; isDemo: boolean };
+type Business = { name: string; tagline: string; description: string; phone: string; whatsapp: string; responsibleName?: string; address: string; addressReference?: string; hours: string; operatingHours?: StructuredWeeklyHours; instagram: string; pickupEnabled: boolean; deliveryEnabled: boolean; pickupSlots: string[]; paymentMethods: string[]; deliveryFee: number; receivedMessage: string; availabilityNotice: string; isDemo: boolean };
 type CartLine = { product: Product; quantity: number };
 type OrderHandoff = { link: string; message: string };
 // "landing" = vitrine (domínio principal, indexável, só mostra o cardápio).
@@ -21,7 +22,7 @@ type SiteConfig = { role: "landing" | "app" | "single"; appUrl: string };
 // Devolve null quando o pedido é montado na própria página.
 type OrderHref = ((slug?: string) => string) | null;
 async function api<T>(url: string, options?: RequestInit): Promise<T> { const response = await fetch(url, { headers: { "Content-Type": "application/json", ...(options?.headers || {}) }, ...options }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || "Não foi possível concluir a ação."); return data; }
-function BrandLogo({ compact = false }: { compact?: boolean }) { return <img className={compact ? "brand-logo compact" : "brand-logo"} src="/brand/delicias-da-sandra-logo.png?v=2" alt="Delícias da Sandra" width={197} height={195} decoding="async" />; }
+function BrandLogo({ compact = false }: { compact?: boolean }) { return <img className={compact ? "brand-logo compact" : "brand-logo"} src="/brand/delicias-da-sandra-logo.webp?v=3" alt="Delícias da Sandra" width={512} height={512} decoding="async" />; }
 
 // O atendimento pode enviar um link oficial wa.me. Mensagens de chat são
 // texto puro; este renderer promove somente URLs do WhatsApp a links seguros
@@ -117,7 +118,158 @@ function AgentDemoRoute() {
 }
 export { HomeRoute, MenuRoute, ProductRoute, CartRoute, CheckoutRoute, OrderHandoffRoute, AdminRoute, AgentDemoRoute };
 
-function Home({ business, products, cart, onMenu, onProduct, onAdd, onAgent, orderHref }: { business: Business; products: Product[]; cart: CartLine[]; onMenu: () => void; onProduct: (p: Product) => void; onAdd: (p: Product) => void; onAgent: () => void; orderHref: OrderHref }) { const day = products.find(p => p.slug === "brigadeiro") || products[0]; const quantityOf = (id: string) => cart.find(l => l.product.id === id)?.quantity ?? 0; const whatsappLink = buildWhatsappLink(business.whatsapp); return <><section className="hero"><div><p className="eyebrow">FEITO COM CARINHO EM FORTALEZA</p><h1>Bolos, doces e salgados que alegram o dia.</h1><p>Produção artesanal com carinho e qualidade — do brownie ao bolo, do doce ao salgado.</p><div className="hero-actions">{orderHref ? <a className="primary" href={orderHref()}>Fazer meu pedido <ChevronRight size={18} aria-hidden="true" /></a> : <button className="primary" onClick={onMenu}>Montar meu pedido <ChevronRight size={18} aria-hidden="true" /></button>}<button className="secondary" onClick={onMenu}>Ver cardápio</button></div></div><figure className="hero-photo"><img src={productImageSrc(day ?? {})} alt="Foto demonstrativa de doce artesanal" width={900} height={1124} decoding="async" /><figcaption>Imagem demonstrativa — aguardando foto oficial</figcaption></figure></section><section className="agent-invite"><div><p className="eyebrow">ATENDIMENTO INTELIGENTE</p><h2>Converse com a assistente da Delícias da Sandra.</h2><p>Ela consulta o cardápio real, monta pedidos e orienta cada etapa.</p></div>{orderHref ? <a className="primary" href={`${orderHref().replace(/\/cardapio$/, "")}/assistente`}>Testar a assistente <MessageCircle size={18} aria-hidden="true" /></a> : <button className="primary" onClick={onAgent}>Testar a assistente <MessageCircle size={18} aria-hidden="true" /></button>}</section><section className="day-feature"><p>🍰 DESTAQUE DO DIA</p><h2>Hoje o destaque é {day?.name}</h2><span>Produzido com carinho · quantidade limitada</span><button onClick={() => day && onProduct(day)}>Conhecer o sabor</button></section><section className="section story"><p className="eyebrow">A NOSSA RECEITA DE TODO DIA</p><h2>Feito com carinho. Servido com qualidade.</h2><p>Bolos, brownies, doces e salgados preparados para tornar seu dia mais gostoso.</p></section><section className="section"><div className="section-title"><div><p className="eyebrow">MAIS PEDIDOS HOJE</p><h2>Quem experimenta volta.</h2></div><button className="text-button" onClick={onMenu}>Ver todos</button></div><div className="product-grid">{products.filter(p => p.isFeatured).slice(0, 3).map(p => <ProductCard key={p.id} product={p} quantity={quantityOf(p.id)} onClick={() => onProduct(p)} onAdd={() => onAdd(p)} orderHref={orderHref} />)}</div></section><section className="collections"><p className="eyebrow">PARA CADA VONTADE</p><h2>Doce ou salgado. Para presentear ou saborear.</h2><p>Explore o cardápio e monte o pedido ideal para o seu momento.</p><button className="secondary" onClick={onMenu}>Explorar cardápio</button></section><section className="social-proof"><strong>Feitos com carinho e qualidade.</strong><span>{business.address ? `Retirada em ${business.address}` : "Fortaleza – Ceará"}{business.addressReference ? ` · ${business.addressReference}` : ""} · Peça também pelo WhatsApp.</span></section><section className="how"><p className="eyebrow">É MUITO SIMPLES ❤️</p><h2>Seu pedido está a poucos passos.</h2><ol className="how-steps"><li>Escolha no cardápio.</li><li>Envie o pedido pelo WhatsApp.</li><li>Combine a retirada com a Sandra.</li></ol></section><footer><span>Delícias&nbsp;da&nbsp;Sandra</span>{business.address && <address>{business.address}{business.addressReference ? ` · ${business.addressReference}` : ""}</address>}{whatsappLink && <a className="footer-whatsapp" href={whatsappLink} target="_blank" rel="noopener noreferrer">Fazer pedido pelo WhatsApp</a>}</footer></> }
+// ---------------------------------------------------------------------------
+// Vitrine pública.
+//
+// Regra que governa este componente: nada é afirmado que não esteja no Store.
+// Enquanto `business.isDemo` for true, o cardápio cadastrado é a semente
+// herdada da empresa anterior — ele continua aparecendo (é o que alimenta o
+// pedido), mas identificado como exemplo, nunca como o cardápio da Sandra.
+// Endereço, WhatsApp, horário e formas de pagamento vêm do Store e já são
+// reais; por isso aparecem, e só quando preenchidos.
+//
+// O que NÃO existe mais aqui, de propósito: "mais pedidos hoje", "quem
+// experimenta volta" e "quantidade limitada". Eram prova social e escassez
+// inventadas — o princípio 10 da bíblia de experiência proíbe exatamente isso.
+// ---------------------------------------------------------------------------
+
+function instagramUrl(handle: string | undefined): string | null {
+  const user = (handle ?? "").trim().replace(/^@/, "");
+  return /^[A-Za-z0-9._]{1,30}$/.test(user) ? `https://instagram.com/${user}` : null;
+}
+
+// O horário estruturado é a fonte boa; `business.hours` é o campo livre
+// antigo e só entra se o estruturado não render nada.
+function openingHoursText(business: Business): string {
+  const structured = isStructuredWeeklyHours(business.operatingHours) ? summarizeWeeklyHoursBR(business.operatingHours) : "";
+  return structured || (business.hours ?? "").trim();
+}
+
+function Home({ business, products, cart, onMenu, onProduct, onAdd, onAgent, orderHref }: { business: Business; products: Product[]; cart: CartLine[]; onMenu: () => void; onProduct: (p: Product) => void; onAdd: (p: Product) => void; onAgent: () => void; orderHref: OrderHref }) {
+  const quantityOf = (id: string) => cart.find(l => l.product.id === id)?.quantity ?? 0;
+  const whatsappLink = buildWhatsappLink(business.whatsapp);
+  const instagram = instagramUrl(business.instagram);
+  const isDemo = business.isDemo === true;
+  const available = products.filter(p => p.isActive !== false);
+  const featured = available.filter(p => p.isFeatured);
+  const showcase = (featured.length > 0 ? featured : available).slice(0, 3);
+  // Só uma foto de verdade pode abrir a página. Sem nenhuma cadastrada, a
+  // abertura é o selo da marca — que é real — em vez de uma imagem de banco
+  // posando de produto da Sandra.
+  const heroPhoto = available.find(hasRealProductImage) ?? null;
+  const hours = openingHoursText(business);
+  const payments = (business.paymentMethods ?? []).map(paymentLabel).filter(Boolean);
+  const menuHeading = isDemo ? "Exemplos de como o cardápio aparece" : "Nosso cardápio";
+
+  return <div className="vitrine">
+    <section className="v-hero" aria-labelledby="hero-title">
+      <div className="v-hero-copy">
+        <p className="v-hero-eyebrow">Confeitaria artesanal · Fortaleza</p>
+        <h1 id="hero-title">Bolos, doces e salgados feitos com carinho.</h1>
+        {business.description && <p className="v-hero-lead">{business.description}</p>}
+        <div className="v-hero-actions">
+          {orderHref
+            ? <a className="primary" href={orderHref()}>Fazer meu pedido <ChevronRight size={18} aria-hidden="true" /></a>
+            : <Link className="primary" to="/cardapio">Montar meu pedido <ChevronRight size={18} aria-hidden="true" /></Link>}
+          <Link className="secondary" to="/cardapio">Ver o cardápio</Link>
+        </div>
+        <ul className="v-facts">
+          {business.address && <li className="v-fact"><b>Retirada</b><span>{business.address}{business.addressReference ? ` · ${business.addressReference}` : ""}</span></li>}
+          {hours && <li className="v-fact"><b>Atendimento</b><span>{hours}</span></li>}
+          {payments.length > 0 && <li className="v-fact"><b>Pagamento</b><span>{payments.join(" · ")}</span></li>}
+        </ul>
+      </div>
+      {heroPhoto
+        ? <figure className="v-hero-photo"><img src={productImageSrc(heroPhoto)} alt={`${heroPhoto.name} — Delícias da Sandra`} width={900} height={1124} fetchPriority="high" decoding="async" /></figure>
+        : <figure className="v-seal">
+            <img src="/brand/delicias-da-sandra-logo.webp?v=3" alt="Delícias da Sandra" width={512} height={512} fetchPriority="high" decoding="async" />
+            {business.tagline && <figcaption><span>{business.tagline}</span></figcaption>}
+          </figure>}
+    </section>
+
+    <section className="v-section" aria-labelledby="menu-title">
+      <div className="v-head-row">
+        <div className="v-head">
+          <p className="v-eyebrow">{isDemo ? "Cardápio de demonstração" : "Cardápio"}</p>
+          <h2 id="menu-title">{menuHeading}</h2>
+          {isDemo && <p>Assim que a Sandra cadastrar os sabores, os preços e as fotos dela, é exatamente aqui que eles aparecem.</p>}
+        </div>
+      </div>
+      <div className="v-menu-grid">
+        {showcase.map(p => <ProductCard key={p.id} product={p} to={`/cardapio/${p.slug}`} isDay={p.isDay === true} quantity={quantityOf(p.id)} onClick={() => onProduct(p)} onAdd={() => onAdd(p)} orderHref={orderHref} />)}
+      </div>
+      <div className="v-menu-all"><Link className="secondary" to="/cardapio">Ver o cardápio completo</Link></div>
+    </section>
+
+    <section className="v-steps" aria-labelledby="steps-title">
+      <div className="v-head">
+        <p className="v-eyebrow">Como pedir</p>
+        <h2 id="steps-title">Seu pedido está a poucos passos.</h2>
+      </div>
+      <ol className="v-steps-list">
+        <li><b>01</b><strong>Escolha no cardápio</strong><span>Monte o pedido com o que estiver disponível no dia.</span></li>
+        <li><b>02</b><strong>Envie pelo WhatsApp</strong><span>O pedido chega pronto na conversa, com itens e total.</span></li>
+        <li><b>03</b><strong>Combine a retirada</strong><span>A Sandra confirma e acerta com você o melhor horário.</span></li>
+      </ol>
+    </section>
+
+    {(business.address || hours || payments.length > 0 || whatsappLink) && <section className="v-section" aria-labelledby="info-title">
+      <div className="v-head">
+        <p className="v-eyebrow">Informações</p>
+        <h2 id="info-title">O que você precisa saber.</h2>
+      </div>
+      <div className="v-info-grid">
+        {business.address && <div className="v-info-card">
+          <b>Onde retirar</b>
+          <address>{business.address}</address>
+          {business.addressReference && <p>{business.addressReference}</p>}
+        </div>}
+        {hours && <div className="v-info-card">
+          <b>Horário de atendimento</b>
+          <p>{hours}</p>
+        </div>}
+        {payments.length > 0 && <div className="v-info-card">
+          <b>Formas de pagamento</b>
+          <p>{payments.join(" · ")}</p>
+          <p>{business.deliveryEnabled ? "Retirada e entrega." : "Somente retirada no local."}</p>
+        </div>}
+        {whatsappLink && <div className="v-info-card">
+          <b>Falar com a gente</b>
+          <p><a href={whatsappLink} target="_blank" rel="noopener noreferrer">Chamar no WhatsApp</a></p>
+          {business.responsibleName && <p>Atendimento com {business.responsibleName}.</p>}
+        </div>}
+      </div>
+      {business.availabilityNotice && <p className="subtle v-menu-all">{business.availabilityNotice}</p>}
+    </section>}
+
+    <section className="v-section">
+      <div className="v-assistant" aria-labelledby="assistant-title">
+        <div>
+          <p className="v-eyebrow">Atendimento automático</p>
+          <h2 id="assistant-title">Assistente de pedidos</h2>
+          <p>Responde com base no cardápio cadastrado no sistema e ajuda a montar o pedido. {isDemo ? "Em demonstração, junto com o cardápio de exemplo." : "Disponível para testar."}</p>
+        </div>
+        {orderHref
+          ? <a className="secondary" href={`${orderHref().replace(/\/cardapio$/, "")}/assistente`}>Conversar com a assistente <MessageCircle size={18} aria-hidden="true" /></a>
+          : <button className="secondary" onClick={onAgent}>Conversar com a assistente <MessageCircle size={18} aria-hidden="true" /></button>}
+      </div>
+    </section>
+
+    <footer className="v-footer">
+      <img className="v-footer-mark" src="/brand/delicias-da-sandra-logo.webp?v=3" alt="" width={512} height={512} loading="lazy" decoding="async" />
+      <div className="v-footer-body">
+        <p className="v-footer-name">{business.name}</p>
+        <div className="v-footer-cols">
+          {business.address && <div className="v-footer-col"><b>Retirada</b><address>{business.address}{business.addressReference ? ` · ${business.addressReference}` : ""}</address></div>}
+          {hours && <div className="v-footer-col"><b>Horário</b><span>{hours}</span></div>}
+          {whatsappLink && <div className="v-footer-col"><b>WhatsApp</b><span><a href={whatsappLink} target="_blank" rel="noopener noreferrer">Fazer pedido pelo WhatsApp</a></span></div>}
+          {instagram && <div className="v-footer-col"><b>Instagram</b><span><a href={instagram} target="_blank" rel="noopener noreferrer">{business.instagram}</a></span></div>}
+        </div>
+        {isDemo && <p className="v-footer-legal">Cardápio em modo demonstração: sabores, preços e fotos ainda não são os da Delícias da Sandra.</p>}
+      </div>
+    </footer>
+  </div>;
+}
 
 type DemoMenuProduct = { id: string; name: string; basePrice: number };
 type DemoChatMessage = { id: string; author: "agent" | "visitor"; text: string; metadata?: { pixKey?: string; products?: DemoMenuProduct[] } };
@@ -214,15 +366,22 @@ function AgentDemo({ onBack }: { onBack: () => void }) {
   }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
   return <section className="section page agent-demo-page"><Back onClick={onBack} /><div className="agent-demo-heading"><div><p className="eyebrow">DEMONSTRAÇÃO AO VIVO</p><h1>A assistente que atende enquanto você produz.</h1><p className="subtle">Este chat usa o mesmo cérebro do atendimento. É uma simulação segura: nenhum pedido é enviado para a produção.</p></div><button className="secondary agent-reset" onClick={restart} disabled={loading}><RotateCcw size={16} aria-hidden="true" /> Recomeçar</button></div><div className="agent-chat" aria-label="Conversa com a assistente"><div className="agent-chat-top"><span className="agent-status"><i /> Assistente Delícias da Sandra</span><small>online para demonstração</small></div><div className="agent-messages" ref={messagesViewportRef} onScroll={handleMessagesScroll} aria-live="polite">{messages.map(message => <div className={`agent-message ${message.author}`} key={message.id}><div>{message.author === "agent" && message.metadata?.products?.length ? <AgentMenuCarousel products={message.metadata.products} /> : <span>{renderChatText(message.text)}</span>}{message.author === "agent" && message.metadata?.pixKey && <button className="agent-copy-pix" type="button" onClick={() => void copyPixKey(message.metadata!.pixKey!)}>{copiedPixKey === message.metadata.pixKey ? "Copiado!" : "Copiar chave PIX"}</button>}</div></div>)}{loading && <div className="agent-message agent typing" aria-label="Assistente digitando"><span><i /><i /><i /></span></div>}</div><form ref={composerRef} className="agent-composer" onSubmit={event => { event.preventDefault(); void send(draft); }} aria-busy={loading}><input ref={composerInputRef} value={draft} onChange={event => setDraft(event.target.value)} placeholder="Escreva sua mensagem…" maxLength={1500} aria-label="Sua mensagem" autoComplete="off" /><button className="primary" disabled={loading || !draft.trim()} aria-label="Enviar mensagem"><Send size={18} aria-hidden="true" /></button></form></div>{error && <p className="error">{error}</p>}<div className="agent-prompts"><span>Experimente:</span>{["Quais sabores vocês têm?", "Quero 2 brownies de brigadeiro", "Como posso pagar?"].map(prompt => <button key={prompt} className="choice" onClick={() => void send(prompt)} disabled={loading}>{prompt}</button>)}</div></section>;
 }
-function Menu({ products, cart, onBack, onProduct, onAdd, orderHref }: { products: Product[]; cart: CartLine[]; onBack: () => void; onProduct: (p: Product) => void; onAdd: (p: Product) => void; orderHref: OrderHref }) { const ordered = [...products].sort((a,b) => Number(b.slug === "brigadeiro") - Number(a.slug === "brigadeiro") || Number(b.isFeatured) - Number(a.isFeatured) || Number(b.isAvailable) - Number(a.isAvailable) || a.displayOrder - b.displayOrder); const quantityOf = (id: string) => cart.find(l => l.product.id === id)?.quantity ?? 0; return <section className="section page menu-page"><Back onClick={onBack} /><p className="eyebrow">CARDÁPIO ATUALIZADO</p><h1>Escolha seu momento doce.</h1><p className="subtle">Produzidos em pequenos lotes. Sabores disponíveis aparecem primeiro.</p><h2 className="sr-only">Sabores disponíveis</h2><div className="product-grid menu-grid">{ordered.map(p => <ProductCard key={p.id} product={p} isDay={p.slug === "brigadeiro"} quantity={quantityOf(p.id)} onClick={() => onProduct(p)} onAdd={() => onAdd(p)} orderHref={orderHref} />)}</div></section> }
-function ProductCard({ product, isDay = false, quantity = 0, onClick, onAdd, orderHref }: { key?: string; product: Product; isDay?: boolean; quantity?: number; onClick: () => void; onAdd?: () => void; orderHref?: OrderHref }) {
+function Menu({ products, cart, onBack, onProduct, onAdd, orderHref }: { products: Product[]; cart: CartLine[]; onBack: () => void; onProduct: (p: Product) => void; onAdd: (p: Product) => void; orderHref: OrderHref }) { const ordered = [...products].sort((a,b) => Number(b.isDay === true) - Number(a.isDay === true) || Number(b.isFeatured) - Number(a.isFeatured) || Number(b.isAvailable) - Number(a.isAvailable) || a.displayOrder - b.displayOrder); const quantityOf = (id: string) => cart.find(l => l.product.id === id)?.quantity ?? 0; return <section className="section page menu-page"><Back onClick={onBack} /><p className="eyebrow">CARDÁPIO ATUALIZADO</p><h1>Escolha seu momento doce.</h1><p className="subtle">Produzidos em pequenos lotes. Sabores disponíveis aparecem primeiro.</p><h2 className="sr-only">Sabores disponíveis</h2><div className="product-grid menu-grid">{ordered.map(p => <ProductCard key={p.id} product={p} to={`/cardapio/${p.slug}`} isDay={p.isDay === true} quantity={quantityOf(p.id)} onClick={() => onProduct(p)} onAdd={() => onAdd(p)} orderHref={orderHref} />)}</div></section> }
+// A área clicável do cartão é um link quando há destino — para que o
+// rastreador siga o produto — e continua um botão quando não há.
+function ProductMain({ to, onClick, children }: { to?: string; onClick: () => void; children: ReactNode }) {
+  return to
+    ? <Link className="product-main" to={to}>{children}</Link>
+    : <button className="product-main" onClick={onClick}>{children}</button>;
+}
+function ProductCard({ product, isDay = false, quantity = 0, to, onClick, onAdd, orderHref }: { key?: string; product: Product; isDay?: boolean; quantity?: number; to?: string; onClick: () => void; onAdd?: () => void; orderHref?: OrderHref }) {
   const promo = product.promotionalPrice && product.minimumPromotionalQuantity;
   const inCart = quantity > 0;
   const [justAdded, setJustAdded] = useState(false);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (addedTimer.current) clearTimeout(addedTimer.current); }, []);
   const handleAdd = () => { onAdd?.(); setJustAdded(true); if (addedTimer.current) clearTimeout(addedTimer.current); addedTimer.current = setTimeout(() => setJustAdded(false), 800); };
-  return <article className={`product-card ${!product.isAvailable ? "sold-out" : ""}${inCart ? " in-cart" : ""}`}><button className="product-main" onClick={onClick}><div className="product-photo"><img loading="lazy" decoding="async" src={productImageSrc(product)} alt={`Imagem demonstrativa de ${product.name}`} />{isDay && <span className="day-badge">Brownie do Dia</span>}</div><div className="product-copy"><p className="product-category">{product.category}</p><h3>{product.name}</h3><p>{product.description}</p>{promo && <small className="promo">{formatCurrency(product.promotionalPrice!)} cada a partir de {product.minimumPromotionalQuantity} un. no pedido</small>}<strong>{formatCurrency(product.basePrice)}</strong></div></button><div className="product-footer"><span className={product.isAvailable ? "available" : "unavailable"}>{product.isAvailable ? "Disponível hoje" : "Indisponível hoje"}{inCart && <b className="in-cart-count"> · {quantity} no pedido<span className="sr-only"> — Este brownie já faz parte do seu pedido.</span></b>}</span>{orderHref ? (product.isAvailable ? <a className="add-icon" href={orderHref(product.slug)} aria-label={`Fazer pedido de ${product.name}`}><Plus size={18} aria-hidden="true" /></a> : <span className="add-icon" aria-hidden="true">—</span>) : onAdd && <button disabled={!product.isAvailable} className={`add-icon${justAdded ? " added" : ""}${inCart ? " in-cart-icon" : ""}`} onClick={handleAdd} aria-label={`Adicionar ${product.name} ao pedido`}>{product.isAvailable ? <Plus size={18} aria-hidden="true" /> : "—"}</button>}</div></article>;
+  return <article className={`product-card ${!product.isAvailable ? "sold-out" : ""}${inCart ? " in-cart" : ""}`}><ProductMain to={to} onClick={onClick}><div className="product-photo"><img loading="lazy" decoding="async" src={productImageSrc(product)} alt={hasRealProductImage(product) ? `${product.name} — Delícias da Sandra` : `Imagem ilustrativa; a foto de ${product.name} ainda não foi cadastrada`} />{isDay && <span className="day-badge">Destaque do dia</span>}{!hasRealProductImage(product) && <span className="photo-note">Foto ilustrativa</span>}</div><div className="product-copy"><p className="product-category">{product.category}</p><h3>{product.name}</h3><p>{product.description}</p>{promo && <small className="promo">{formatCurrency(product.promotionalPrice!)} cada a partir de {product.minimumPromotionalQuantity} un. no pedido</small>}<strong>{formatCurrency(product.basePrice)}</strong></div></ProductMain><div className="product-footer"><span className={product.isAvailable ? "available" : "unavailable"}>{product.isAvailable ? "Disponível hoje" : "Indisponível hoje"}{inCart && <b className="in-cart-count"> · {quantity} no pedido<span className="sr-only"> — Este brownie já faz parte do seu pedido.</span></b>}</span>{orderHref ? (product.isAvailable ? <a className="add-icon" href={orderHref(product.slug)} aria-label={`Fazer pedido de ${product.name}`}><Plus size={18} aria-hidden="true" /></a> : <span className="add-icon" aria-hidden="true">—</span>) : onAdd && <button disabled={!product.isAvailable} className={`add-icon${justAdded ? " added" : ""}${inCart ? " in-cart-icon" : ""}`} onClick={handleAdd} aria-label={`Adicionar ${product.name} ao pedido`}>{product.isAvailable ? <Plus size={18} aria-hidden="true" /> : "—"}</button>}</div></article>;
 }
 function ProductDetail({ product, recommendations, cart, onBack, onAdd, orderHref }: { product: Product; recommendations: Product[]; cart: CartLine[]; onBack: () => void; onAdd: (p: Product, q: number) => void; orderHref: OrderHref }) {
   const [quantity, setQuantity] = useState(1);

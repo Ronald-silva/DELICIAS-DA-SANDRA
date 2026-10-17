@@ -141,8 +141,8 @@ async function loadStore(): Promise<Store> {
 }
 async function saveStore(store: Store) { return saveStoreFile(storePath, store); }
 function publicProduct(product: Product) {
-  const { id, slug, name, description, category, imageUrl, basePrice, promotionalPrice, minimumPromotionalQuantity, isAvailable, isFeatured, displayOrder, ingredients, allergens, updatedAt } = product;
-  return { id, slug, name, description, category, imageUrl, basePrice, promotionalPrice, minimumPromotionalQuantity, isAvailable, isFeatured, displayOrder, ingredients, allergens, updatedAt };
+  const { id, slug, name, description, category, imageUrl, basePrice, promotionalPrice, minimumPromotionalQuantity, isAvailable, isFeatured, isDay, displayOrder, ingredients, allergens, updatedAt } = product;
+  return { id, slug, name, description, category, imageUrl, basePrice, promotionalPrice, minimumPromotionalQuantity, isAvailable, isFeatured, isDay: isDay === true, displayOrder, ingredients, allergens, updatedAt };
 }
 function validText(value: unknown, max: number) { return typeof value === "string" && value.trim().length > 0 && value.trim().length <= max; }
 function admin(req: Request, res: Response, next: NextFunction) {
@@ -221,7 +221,7 @@ async function startServer() {
     const siteUrl = siteUrlFor(req);
     if (!siteUrl) return res.status(503).type("text/plain").send("Sitemap indisponível: defina PUBLIC_SITE_URL.");
     const store = await loadStore();
-    res.type("application/xml").send(buildSitemapXml({ siteUrl, products: store.products }));
+    res.type("application/xml").send(buildSitemapXml({ siteUrl, products: store.products, isDemo: store.business.isDemo !== false }));
   });
 
   app.get("/health", createHealthHandler());

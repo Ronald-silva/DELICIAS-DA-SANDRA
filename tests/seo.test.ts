@@ -239,9 +239,13 @@ test("na vitrine o cardápio continua indexável e com canonical", () => {
 
 test("robots.txt do sistema bloqueia tudo e não anuncia sitemap", () => {
   const robots = buildRobotsTxt(APP, "app");
-  assert.match(robots, /^User-agent: \*\nDisallow: \/\n$/);
+  // Precisa deixar RASTREAR para que o `noindex` da página seja lido; o que o
+  // sistema não pode é ser indexado. Bloquear aqui deixaria a URL elegível ao
+  // índice sem que o Google jamais visse a instrução para excluí-la.
+  assert.match(robots, /^User-agent: \*\nAllow: \/\n/);
+  assert.equal(robots.includes("Disallow: /\n"), false);
+  assert.match(robots, /Disallow: \/api\//);
   assert.equal(robots.includes("Sitemap:"), false);
-  assert.equal(robots.includes("Allow:"), false);
 });
 
 test("robots.txt da vitrine continua liberando o cardápio", () => {
@@ -289,4 +293,18 @@ test("o noscript mostra endereço e ponto de referência", () => {
   const business = { ...demoBusiness, address: "Rua Ajurana, 80 — Itaoca, Fortaleza – CE", addressReference: "Próximo ao Shopping Parangaba" };
   const seo = buildPageSeo({ pathname: "/", business, products, siteUrl: SITE });
   assert.ok(seo.noscript.includes("Retirada: Rua Ajurana, 80 — Itaoca, Fortaleza – CE — Próximo ao Shopping Parangaba"), seo.noscript);
+});
+
+test("em demonstração o sitemap para nas URLs estáveis, sem os produtos herdados", () => {
+  const xml = buildSitemapXml({ siteUrl: SITE, products, isDemo: true });
+  assert.ok(xml.includes(`<loc>${SITE}/</loc>`));
+  assert.ok(xml.includes(`<loc>${SITE}/cardapio</loc>`));
+  assert.equal(xml.includes("/cardapio/brigadeiro"), false);
+});
+
+test("o noscript avisa que o cardápio é de demonstração", () => {
+  const demo = buildPageSeo({ pathname: "/", business: demoBusiness, products, siteUrl: SITE });
+  assert.match(demo.noscript, /Cardápio de demonstração/);
+  const real = buildPageSeo({ pathname: "/", business: { ...demoBusiness, isDemo: false }, products, siteUrl: SITE });
+  assert.equal(real.noscript.includes("Cardápio de demonstração"), false);
 });

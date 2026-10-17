@@ -5,7 +5,7 @@ import { AgentConversationError, type AgentConversationAction } from "../src/age
 import type { AgentSession, AgentConversationStep } from "../src/agent/session.types.ts";
 import { createAgentTools, type AgentDomainStore, type AgentTools } from "../src/agent/tools.ts";
 import { OrderCreationError, type Order } from "../src/lib/orders.ts";
-import { INITIAL_OPERATING_HOURS } from "../src/lib/business-hours.ts";
+import { SAMPLE_WEEKLY_HOURS } from "./fixture-weekly-hours.ts";
 
 // --- fábricas de teste ---------------------------------------------------
 
@@ -610,14 +610,14 @@ test("CONFIRM_ORDER revalida horário: rejeita se o horário salvo saiu da lista
 // --- bloqueio de horário comercial ------------------------------------------
 
 // Terça-feira 07:05 em America/Fortaleza (UTC-3) — antes da abertura das 14h
-// do INITIAL_OPERATING_HOURS (seg-sex 14h-22h, sáb/dom fechado).
+// do SAMPLE_WEEKLY_HOURS (seg-sex 14h-22h, sáb/dom fechado).
 const OUTSIDE_HOURS_NOW = () => new Date("2026-07-28T10:05:00.000Z");
 // Mesma terça-feira, 19:05 em America/Fortaleza — dentro do expediente.
 const WITHIN_HOURS_NOW = () => new Date("2026-07-28T22:05:00.000Z");
 
 test("CONFIRM_ORDER bloqueia fora do horário de funcionamento quando operatingHours está cadastrado", () => {
   const { tools: realTools } = makeTools(
-    { business: { ...makeDomainStore().business, operatingHours: INITIAL_OPERATING_HOURS } },
+    { business: { ...makeDomainStore().business, operatingHours: SAMPLE_WEEKLY_HOURS } },
     OUTSIDE_HOURS_NOW,
   );
   const { tools, calls } = spyOn(realTools);
@@ -630,7 +630,7 @@ test("CONFIRM_ORDER bloqueia fora do horário de funcionamento quando operatingH
 
 test("CONFIRM_ORDER cria o pedido normalmente dentro do horário de funcionamento cadastrado", () => {
   const { tools: realTools } = makeTools(
-    { business: { ...makeDomainStore().business, operatingHours: INITIAL_OPERATING_HOURS } },
+    { business: { ...makeDomainStore().business, operatingHours: SAMPLE_WEEKLY_HOURS } },
     WITHIN_HOURS_NOW,
   );
   const { tools } = spyOn(realTools);

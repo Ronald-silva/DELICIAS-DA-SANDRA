@@ -29,7 +29,7 @@ export const BROWNIER_WHATSAPP = process.env.SANDRA_WHATSAPP?.trim() || "+55 85 
 export const BROWNIER_INSTAGRAM = "@delicias_da_sandraoficial";
 export const BROWNIER_PAYMENT_METHODS = ["PIX", "DINHEIRO", "CARTAO"] as const;
 export const BROWNIER_DELIVERY_ENABLED = false;
-export const BROWNIER_HOURS_VERSION = 2;
+export const BROWNIER_HOURS_VERSION = 3;
 
 type StoreWithBusiness = { business: Record<string, unknown> };
 

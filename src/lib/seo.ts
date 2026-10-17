@@ -127,6 +127,11 @@ function buildNoscript(business: SeoBusiness, products: SeoProduct[], pathname: 
     const list = activeProducts(products);
     if (list.length > 0) {
       parts.push("<h2>Cardápio</h2>");
+      // A página renderizada avisa, em destaque, que o cardápio é a semente
+      // herdada. Um rastreador que não executa JavaScript só vê este bloco —
+      // sem o aviso, ele leria os sabores e preços de demonstração como se
+      // fossem a oferta real da loja.
+      if (business.isDemo !== false) parts.push("<p>Cardápio de demonstração: os itens, sabores e preços abaixo são dados de exemplo e ainda não são o cardápio da Delícias da Sandra.</p>");
       parts.push(`<ul>${list.map(product => {
         const price = priceText(product.basePrice);
         const productDescription = text(product.description);
@@ -311,9 +316,19 @@ export function injectSeo(html: string, seo: PageSeo): string {
 }
 
 export function buildRobotsTxt(siteUrl: string, role: SiteRole = "single"): string {
-  // O sistema inteiro fica fora do índice — não há conteúdo para rankear em
-  // carrinho, checkout ou painel.
-  if (role === "app") return ["User-agent: *", "Disallow: /", ""].join("\n");
+  // O sistema inteiro fica fora do índice — mas por `noindex` nas páginas
+  // (buildPageSeo com role "app"), NÃO por bloqueio de rastreamento.
+  //
+  // Um `Disallow: /` aqui seria contraproducente: o Google deixaria de buscar
+  // a página e, por isso mesmo, nunca leria o `noindex` dela. A URL
+  // continuaria elegível ao índice — aparecendo sem título nem descrição —
+  // que é exatamente o oposto do pretendido. Para tirar do índice é preciso
+  // deixar rastrear.
+  //
+  // O que fica bloqueado é só /api/, que não é página: não tem noindex para
+  // ser lido e não deve consumir orçamento de rastreamento. O painel continua
+  // protegido pela autenticação — robots.txt nunca foi controle de acesso.
+  if (role === "app") return ["User-agent: *", "Allow: /", "Disallow: /api/", ""].join("\n");
   const lines = [
     "User-agent: *",
     "Allow: /",
@@ -329,8 +344,13 @@ export function buildRobotsTxt(siteUrl: string, role: SiteRole = "single"): stri
   return lines.join("\n");
 }
 
-export function buildSitemapXml({ siteUrl, products, lastmod }: { siteUrl: string; products: SeoProduct[]; lastmod?: string }): string {
-  const urls = ["/", "/cardapio", ...activeProducts(products).map(product => `/cardapio/${text(product.slug)}`)];
+// Em modo demonstração o sitemap para nas duas URLs estáveis: "/" e
+// "/cardapio". Os endereços por produto vêm de sabores herdados da empresa
+// anterior — submetê-los ao Google indexaria conteúdo que não é da loja e,
+// quando a Sandra cadastrar o cardápio dela, deixaria para trás uma lista de
+// URLs mortas já rastreadas. Com `isDemo: false`, entram todos.
+export function buildSitemapXml({ siteUrl, products, lastmod, isDemo = false }: { siteUrl: string; products: SeoProduct[]; lastmod?: string; isDemo?: boolean }): string {
+  const urls = ["/", "/cardapio", ...(isDemo ? [] : activeProducts(products).map(product => `/cardapio/${text(product.slug)}`))];
   const entries = urls.map(path => [
     "  <url>",
     `    <loc>${escapeHtml(`${siteUrl}${path}`)}</loc>`,
