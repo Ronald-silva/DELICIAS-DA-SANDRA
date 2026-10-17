@@ -7,7 +7,7 @@ MVP mobile-first para consulta de sabores, montagem de pedido e operação simpl
 ## O que está pronto
 
 - Cardápio público dinâmico com disponibilidade e promoção por quantidade.
-- Produto, carrinho, checkout e confirmação com código público não sequencial.
+- Produto, carrinho e checkout que terminam em **envio do pedido pelo WhatsApp**.
 - Cálculo de preços e validação do pedido no servidor.
 - Painel responsivo para alterar disponibilidade, preço, promoção, produtos, status de pedidos e dados da empresa.
 - Endpoints públicos preparados para uma futura ferramenta de agente de IA.
@@ -19,9 +19,23 @@ npm ci
 npm run dev
 ```
 
+### Como o pedido chega à Sandra
+
+O site **não registra pedidos**. No checkout, o cliente preenche os dados, toca
+em "Enviar pedido pelo WhatsApp" e o site abre a conversa da Sandra com a
+mensagem já escrita (itens, quantidades, valores, total, retirada, pagamento e
+observações). Quem envia é sempre o cliente, dentro do WhatsApp dele, e o
+pedido só está confirmado quando a Sandra responde — a interface diz isso de
+forma explícita e nunca anuncia confirmação automática.
+
+Sem um número de WhatsApp válido cadastrado, o botão fica desabilitado com um
+aviso, em vez de abrir um link quebrado. O endpoint `POST /api/public/orders`
+continua existindo para o agente de WhatsApp e para os testes, mas não é mais
+usado pelo site.
+
 Abra `http://localhost:3000`. Os dados são criados na primeira execução em `data/delicias-da-sandra.demo.json`; esse arquivo é ignorado pelo Git e pode ser removido para reiniciar a demonstração.
 
-Para acessar o painel, use **Área da equipe** no rodapé. Em desenvolvimento local, sem `ADMIN_ACCESS_CODE` definido, o código de demonstração é `sandra-demo` — **isso funciona apenas com `NODE_ENV` diferente de `production`**. Para qualquer ambiente publicado (demo pública, produção), defina uma variável forte antes de iniciar o servidor; sem ela — ou com o valor de demonstração — o servidor recusa iniciar em produção:
+Para acessar o painel, use **Área da equipe** no rodapé. Em desenvolvimento local, sem `ADMIN_ACCESS_CODE` definido, o código de demonstração é `brownies-demo` — **isso funciona apenas com `NODE_ENV` diferente de `production`**. Para qualquer ambiente publicado (demo pública, produção), defina uma variável forte antes de iniciar o servidor; sem ela — ou com o valor de demonstração — o servidor recusa iniciar em produção:
 
 ```bash
 ADMIN_ACCESS_CODE=<defina-um-codigo-forte> npm run dev
@@ -34,10 +48,13 @@ somente no `.env` local ou no provedor de deploy.
 
 | Variável | Necessária | Uso |
 | --- | --- | --- |
-| `ADMIN_ACCESS_CODE` | Sim, em produção | Protege as rotas administrativas. Obrigatória e não pode ser `sandra-demo` quando `NODE_ENV=production` — o servidor não inicia caso contrário. Em desenvolvimento, é opcional (fallback `sandra-demo`). |
+| `ADMIN_ACCESS_CODE` | Sim, em produção | Protege as rotas administrativas. Obrigatória e não pode ser `brownies-demo` quando `NODE_ENV=production` — o servidor não inicia caso contrário. Em desenvolvimento, é opcional (fallback `brownies-demo`). |
 | `ADMIN_SESSION_TTL_MS` | Não | Duração da sessão administrativa em milissegundos, padrão 4 horas. |
 | `ADMIN_LOGIN_WINDOW_MS` | Não | Janela do limite de tentativas de login, padrão 10 minutos (5 tentativas inválidas por IP). |
 | `PORT` | Não | Porta do servidor, padrão `3000`. |
+| `SANDRA_WHATSAPP` | Não | Sobrescreve o WhatsApp usado como semente quando o armazenamento ainda não tem um número válido cadastrado. O valor embutido é o número oficial da loja; o painel em `/equipe` também altera e o valor persiste. Números malformados são recusados e, nesse caso, o site não exibe link de WhatsApp em vez de gerar um link quebrado. |
+| `PUBLIC_SITE_URL` | Recomendada em produção | URL pública da **vitrine** (ex.: `https://deliciasdasandra.com.br`). Usada no `canonical`, nas tags de compartilhamento e no `sitemap.xml`. Sem ela, o servidor deriva do host da requisição. |
+| `PUBLIC_APP_URL` | Só se usar subdomínio | URL do **sistema de pedidos** (ex.: `https://pedidos.deliciasdasandra.com.br`). Define a divisão vitrine/sistema: o host que bater com esta URL atende como sistema, qualquer outro como vitrine. Sem ela, tudo funciona em um endereço só. |
 | `BF_STORE_PATH` | Não | Caminho do armazenamento JSON local. |
 | `BF_AGENT_MAX_MISUNDERSTANDINGS` | Não | Limite de não compreensões antes do handoff; padrão `3`. |
 | `BF_SIMULATOR_DEBUG_CONTEXT` | Não | Inclui contexto de apresentação na saída do simulador. |
@@ -72,6 +89,49 @@ Em produção, a ausência da variável impede a inicialização. Nunca registre
 compartilhe a URL completa do webhook. O adapter usa timeout de 10 segundos nas
 chamadas de envio, não registra tokens, telefones ou payloads, e mantém o LLM
 desabilitado para esse canal.
+
+## Vitrine e sistema em dois endereços
+
+O mesmo processo atende os dois endereços; o papel de cada requisição vem do
+host, comparado com `PUBLIC_APP_URL`:
+
+| | Endereço | O que serve | Google |
+| --- | --- | --- | --- |
+| **Vitrine** | `PUBLIC_SITE_URL` (domínio principal) | Home, cardápio e uma página por produto, com preços | Indexado |
+| **Sistema** | `PUBLIC_APP_URL` (subdomínio) | Carrinho, checkout, assistente e painel | `Disallow: /` — nada indexado |
+
+Na vitrine, montar pedido acontece no outro endereço: o navegador guarda o
+carrinho por origem, então um carrinho montado na vitrine não chegaria ao
+sistema. Por isso, ali os botões de adicionar viram links para o sistema, o
+ícone do carrinho vira link e `/carrinho` e `/finalizar` redirecionam.
+
+**Sem `PUBLIC_APP_URL` definida não há divisão**: um endereço só, com o
+comportamento completo. É o padrão local e o que vale no deploy atual.
+
+## SEO técnico
+
+O que o código já entrega:
+
+- `<title>`, `description`, `canonical`, `robots`, Open Graph e Twitter Card
+  por rota, injetados pelo servidor em produção (`src/lib/seo.ts`). O
+  `index.html` traz os mesmos valores como padrão estático.
+- `/robots.txt` e `/sitemap.xml` gerados dinamicamente, por papel do endereço.
+  Na vitrine, o sitemap lista a home, o cardápio e cada produto ativo, e o
+  robots bloqueia `/equipe`, as etapas de pedido e `/api/`. No sistema, o
+  robots bloqueia tudo e o sitemap responde 404.
+- Conteúdo rastreável sem JavaScript: um `<noscript>` com nome, descrição e o
+  cardápio com preços, montado a partir do próprio armazenamento.
+- Dados estruturados (JSON-LD). **Enquanto `business.isDemo` for `true`, só o
+  nó `WebSite` é publicado.** Endereço, telefone, horário e preços só entram
+  quando os dados reais forem cadastrados e `isDemo` virar `false`, e ainda
+  assim cada campo é checado individualmente (telefone só se o número for
+  válido, endereço só se tiver logradouro).
+
+O que **não** depende do código e continua pendente: um domínio próprio
+(`PUBLIC_SITE_URL`), o conteúdo real da Sandra (cardápio, fotos, endereço,
+horário) e a configuração externa — Google Search Console, envio do sitemap e
+perfil do Google Empresa. Preparação técnica não garante posição nem aparição
+imediata no Google.
 
 ## Verificação
 

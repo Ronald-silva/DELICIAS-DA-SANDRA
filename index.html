@@ -3,13 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#5b2c20" />
+    <link rel="icon" href="/brand/delicias-da-sandra-logo.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/brand/delicias-da-sandra-logo.png" />
+    <!--
+      O bloco abaixo é o padrão estático. Em produção o servidor substitui o
+      que está entre seo:start e seo:end pelas tags da rota pedida
+      (src/lib/seo.ts). PENDENTE: o canonical aponta para a URL atual do
+      Render; ao publicar em domínio próprio, defina PUBLIC_SITE_URL no
+      ambiente e atualize o valor estático abaixo.
+    -->
+    <!-- seo:start -->
     <title>Delícias da Sandra — Bolos, doces e salgados</title>
+    <meta name="description" content="Cardápio de bolos, doces e salgados artesanais da Delícias da Sandra, em Fortaleza. Monte seu pedido e envie direto pelo WhatsApp." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://delicias-da-sandra.onrender.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Delícias da Sandra" />
+    <meta property="og:title" content="Delícias da Sandra — Bolos, doces e salgados" />
+    <meta property="og:description" content="Cardápio de bolos, doces e salgados artesanais da Delícias da Sandra, em Fortaleza. Monte seu pedido e envie direto pelo WhatsApp." />
+    <meta property="og:url" content="https://delicias-da-sandra.onrender.com/" />
+    <meta property="og:image" content="https://delicias-da-sandra.onrender.com/brand/delicias-da-sandra-logo.png" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Delícias da Sandra — Bolos, doces e salgados" />
+    <meta name="twitter:description" content="Cardápio de bolos, doces e salgados artesanais da Delícias da Sandra, em Fortaleza. Monte seu pedido e envie direto pelo WhatsApp." />
+    <meta name="twitter:image" content="https://delicias-da-sandra.onrender.com/brand/delicias-da-sandra-logo.png" />
+    <!-- seo:end -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Nunito+Sans:wght@400;600;700;800&display=swap" />
   </head>
   <body>
     <div id="root"></div>
+    <!-- seo-noscript:start -->
+    <noscript>
+      <h1>Delícias da Sandra</h1>
+      <p>Bolos, doces e salgados artesanais em Fortaleza. Para ver o cardápio e pedir, ative o JavaScript.</p>
+    </noscript>
+    <!-- seo-noscript:end -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

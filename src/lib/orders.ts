@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { calculateLinePrice, type PricingProduct } from "./pricing.ts";
 import { sanitizeOptionalText } from "./sanitize.ts";
+import { isAcceptedPaymentMethod } from "./payment.ts";
 
 export type OrderItemInput = { productId?: unknown; quantity?: unknown };
 
@@ -186,7 +187,7 @@ export function createOrder({
   if (!validText(customerName, 100) || !validText(customerPhone, 30)) {
     throw new OrderCreationError(400, "invalid_customer", "Informe nome e telefone.");
   }
-  if (!["RETIRADA", "ENTREGA"].includes(fulfillmentType as string) || !["PIX", "DINHEIRO", "A_COMBINAR"].includes(paymentMethod as string)) {
+  if (!["RETIRADA", "ENTREGA"].includes(fulfillmentType as string) || !isAcceptedPaymentMethod(paymentMethod)) {
     throw new OrderCreationError(400, "invalid_fulfillment_or_payment", "Recebimento ou pagamento inválido.");
   }
 

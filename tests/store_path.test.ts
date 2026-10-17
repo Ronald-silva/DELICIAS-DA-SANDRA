@@ -6,7 +6,7 @@ import path from "node:path";
 import test from "node:test";
 import { resolveStorePath, loadStoreFile, saveStoreFile } from "../src/lib/store.ts";
 
-const REAL_DEMO_PATH = path.join(process.cwd(), "data", "brownies-fortal.demo.json");
+const REAL_DEMO_PATH = path.join(process.cwd(), "data", "delicias-da-sandra.demo.json");
 
 type FakeStore = { business: { name: string }; products: { id: string }[]; orders: unknown[] };
 const fakeSeed = (): FakeStore => ({ business: { name: "Loja de teste" }, products: [{ id: "p1" }], orders: [] });
@@ -24,7 +24,7 @@ test("resolveStorePath usa o caminho padrão quando BF_STORE_PATH não está def
   const original = process.env.BF_STORE_PATH;
   delete process.env.BF_STORE_PATH;
   try {
-    assert.equal(resolveStorePath("/projeto"), path.join("/projeto", "data", "brownies-fortal.demo.json"));
+    assert.equal(resolveStorePath("/projeto"), path.join("/projeto", "data", "delicias-da-sandra.demo.json"));
   } finally {
     if (original !== undefined) process.env.BF_STORE_PATH = original;
   }

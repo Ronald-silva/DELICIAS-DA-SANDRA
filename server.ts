@@ -1,14 +1,18 @@
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
 import path from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { createServer as createViteServer } from "vite";
 import { type PricingProduct } from "./src/lib/pricing.ts";
 import { ORDER_STATUSES } from "./src/lib/orderStatuses.ts";
 import { resolveStorePath, loadStoreFile, saveStoreFile } from "./src/lib/store.ts";
+import { uniqueSlug } from "./src/lib/slug.ts";
 import { createOrder, OrderCreationError, type Order } from "./src/lib/orders.ts";
 import { closeDatabasePool, getDatabasePool } from "./src/lib/database.ts";
 import { createHealthHandler } from "./src/lib/health.ts";
-import { BROWNIER_DELIVERY_ENABLED, BROWNIER_HOURS_VERSION, BROWNIER_INSTAGRAM, BROWNIER_PICKUP_ADDRESS, BROWNIER_PAYMENT_METHODS, BROWNIER_PIX_KEY, BROWNIER_WHATSAPP, ensureBrownierDeliveryEnabled, ensureBrownierInstagram, ensureBrownierPaymentMethods, ensureBrownierPickupAddress, ensureBrownierOperatingHours, ensureBrownierPixKey, ensureBrownierResponsible, ensureBrownierWhatsapp } from "./src/lib/business-defaults.ts";
+import { buildPageSeo, buildRobotsTxt, buildSitemapXml, injectSeo, resolveSiteRole, resolveSiteUrl, type SiteRole } from "./src/lib/seo.ts";
+import { isValidWhatsappNumber } from "./src/lib/whatsapp.ts";
+import { BROWNIER_DELIVERY_ENABLED, BROWNIER_HOURS_VERSION, BROWNIER_INSTAGRAM, BROWNIER_ADDRESS_REFERENCE, BROWNIER_PICKUP_ADDRESS, BROWNIER_PAYMENT_METHODS, BROWNIER_PIX_KEY, BROWNIER_WHATSAPP, ensureBrownierDeliveryEnabled, ensureBrownierInstagram, ensureBrownierPaymentMethods, ensureBrownierPickupAddress, ensureBrownierAddressReference, ensureBrownierOperatingHours, ensureBrownierPixKey, ensureBrownierResponsible, ensureBrownierWhatsapp } from "./src/lib/business-defaults.ts";
 import { validateStructuredWeeklyHours } from "./src/lib/business-hours.ts";
 import { createWhatsappConversationRuntime } from "./src/agent/whatsapp-conversation.runtime.ts";
 import { createPostgresConversationState } from "./src/agent/postgres-conversation-state.ts";
@@ -98,7 +102,7 @@ function verifyAdminSessionToken(token: string | undefined): boolean {
 const demoStore: Store = {
   business: {
     name: "Delícias da Sandra", tagline: "Feito com carinho e qualidade", description: "Bolos, brownies, doces e salgados artesanais em Fortaleza. Veja o cardápio e monte seu pedido em poucos minutos.",
-    phone: BROWNIER_WHATSAPP, whatsapp: BROWNIER_WHATSAPP, address: BROWNIER_PICKUP_ADDRESS, hours: "", instagram: BROWNIER_INSTAGRAM, pickupEnabled: true, deliveryEnabled: BROWNIER_DELIVERY_ENABLED,
+    phone: BROWNIER_WHATSAPP, whatsapp: BROWNIER_WHATSAPP, address: BROWNIER_PICKUP_ADDRESS, addressReference: BROWNIER_ADDRESS_REFERENCE, hours: "", instagram: BROWNIER_INSTAGRAM, pickupEnabled: true, deliveryEnabled: BROWNIER_DELIVERY_ENABLED,
     pickupSlots: [],
     paymentMethods: [...BROWNIER_PAYMENT_METHODS], deliveryFee: 0,
     pixKey: BROWNIER_PIX_KEY,
@@ -124,7 +128,7 @@ const demoStore: Store = {
 
 async function loadStore(): Promise<Store> {
   const store = await loadStoreFile(storePath, () => demoStore);
-  const withOfficialAddress = ensureBrownierPickupAddress(store);
+  const withOfficialAddress = ensureBrownierAddressReference(ensureBrownierPickupAddress(store));
   const withOperatingHours = ensureBrownierOperatingHours(withOfficialAddress);
   const withResponsible = ensureBrownierResponsible(withOperatingHours);
   const withPixKey = ensureBrownierPixKey(withResponsible);
@@ -190,6 +194,34 @@ async function startServer() {
     loadDomainStore: async () => structuredClone((await loadStore()) as Store),
     saveDomainStore: async () => undefined,
     maxMisunderstandings: maxMisunderstandingsRaw ? Number(maxMisunderstandingsRaw) : undefined,
+  });
+
+  // SEO técnico. robots.txt e sitemap.xml ficam ANTES de qualquer middleware
+  // de arquivos/SPA porque o catch-all devolvia o HTML da aplicação com 200
+  // para esses caminhos — para o Google, um robots.txt inválido.
+  // A URL base vem de PUBLIC_SITE_URL; sem ela, é derivada do host da
+  // requisição (validado em resolveSiteUrl).
+  //
+  // A vitrine (domínio principal) e o sistema de pedidos (subdomínio) são o
+  // mesmo processo: o papel de cada requisição vem do host. Sem
+  // PUBLIC_APP_URL definida, tudo continua sendo um site só.
+  const siteUrlFor = (req: Request) => resolveSiteUrl(process.env.PUBLIC_SITE_URL, req.get("host"), req.protocol);
+  const appUrl = () => resolveSiteUrl(process.env.PUBLIC_APP_URL, undefined, "https");
+  const roleFor = (req: Request): SiteRole => resolveSiteRole(req.get("host"), process.env.PUBLIC_APP_URL);
+
+  // A vitrine precisa saber para onde mandar quem vai pedir; o sistema
+  // precisa saber que é ele quem atende o pedido.
+  app.get("/api/public/site", (req, res) => res.json({ role: roleFor(req), appUrl: appUrl() }));
+
+  app.get("/robots.txt", (req, res) => {
+    res.type("text/plain").send(buildRobotsTxt(siteUrlFor(req), roleFor(req)));
+  });
+  app.get("/sitemap.xml", async (req, res) => {
+    if (roleFor(req) === "app") return res.status(404).type("text/plain").send("Sem sitemap: este endereço é o sistema de pedidos, fora do índice.");
+    const siteUrl = siteUrlFor(req);
+    if (!siteUrl) return res.status(503).type("text/plain").send("Sitemap indisponível: defina PUBLIC_SITE_URL.");
+    const store = await loadStore();
+    res.type("application/xml").send(buildSitemapXml({ siteUrl, products: store.products }));
   });
 
   app.get("/health", createHealthHandler());
@@ -279,7 +311,7 @@ async function startServer() {
   app.post("/api/admin/products", admin, adminProductBody, async (req, res) => {
     const store = await loadStore(); const body = req.body ?? {};
     if (!validText(body.name, 100)) return res.status(400).json({ error: "Nome do produto é obrigatório." });
-    const id = crypto.randomUUID(); const product: Product = { id, slug: String(body.slug || body.name).toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), name: body.name.trim(), description: String(body.description || "").trim(), category: String(body.category || "Brownies").trim(), imageUrl: "", basePrice: Number(body.basePrice || 0), promotionalPrice: body.promotionalPrice === null || body.promotionalPrice === "" ? null : Number(body.promotionalPrice), minimumPromotionalQuantity: body.minimumPromotionalQuantity === null || body.minimumPromotionalQuantity === "" ? null : Number(body.minimumPromotionalQuantity), isActive: body.isActive !== false, isAvailable: body.isAvailable !== false, isFeatured: Boolean(body.isFeatured), displayOrder: Number(body.displayOrder || store.products.length + 1), ingredients: String(body.ingredients || ""), allergens: String(body.allergens || ""), updatedAt: new Date().toISOString() };
+    const id = crypto.randomUUID(); const product: Product = { id, slug: uniqueSlug(String(body.slug || body.name), store.products.map(p => p.slug), id), name: body.name.trim(), description: String(body.description || "").trim(), category: String(body.category || "Brownies").trim(), imageUrl: "", basePrice: Number(body.basePrice || 0), promotionalPrice: body.promotionalPrice === null || body.promotionalPrice === "" ? null : Number(body.promotionalPrice), minimumPromotionalQuantity: body.minimumPromotionalQuantity === null || body.minimumPromotionalQuantity === "" ? null : Number(body.minimumPromotionalQuantity), isActive: body.isActive !== false, isAvailable: body.isAvailable !== false, isFeatured: Boolean(body.isFeatured), displayOrder: Number(body.displayOrder || store.products.length + 1), ingredients: String(body.ingredients || ""), allergens: String(body.allergens || ""), updatedAt: new Date().toISOString() };
     store.products.push(product); await saveStore(store); res.status(201).json(product);
   });
   app.put("/api/admin/products/:id", admin, adminProductBody, async (req, res) => {
@@ -291,15 +323,48 @@ async function startServer() {
   app.delete("/api/admin/products/:id", admin, async (req, res) => { const store = await loadStore(); const before = store.products.length; store.products = store.products.filter(p => p.id !== req.params.id); if (before === store.products.length) return res.status(404).json({ error: "Produto não encontrado." }); await saveStore(store); res.status(204).end(); });
   app.put("/api/admin/orders/:id", admin, async (req, res) => { const store = await loadStore(); const order = store.orders.find(o => o.id === req.params.id); if (!order) return res.status(404).json({ error: "Pedido não encontrado." }); if (req.body.status && !orderStatuses.includes(req.body.status)) return res.status(400).json({ error: "Status inválido." }); Object.assign(order, { status: req.body.status ?? order.status, internalNotes: typeof req.body.internalNotes === "string" ? req.body.internalNotes.slice(0, 1000) : order.internalNotes, updatedAt: new Date().toISOString() }); await saveStore(store); res.json(order); });
 
+  // Uma rota de API inexistente devolvia o HTML da SPA com 200, o que esconde
+  // erros de integração e dá ao rastreador páginas duplicadas em /api/*.
+  app.use("/api", (_req, res) => res.status(404).json({ error: "Rota não encontrada." }));
+
   let closeVite: (() => Promise<void>) | undefined;
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     closeVite = () => vite.close();
     app.use(vite.middlewares);
   }
-  else { const distPath = path.join(process.cwd(), "dist"); app.use(express.static(distPath)); app.get("*", (_req, res) => res.sendFile(path.join(distPath, "index.html"))); }
+  else {
+    const distPath = path.join(process.cwd(), "dist");
+    const indexPath = path.join(distPath, "index.html");
+    // `index: false` para que "/" caia no handler abaixo e receba as tags da
+    // rota em vez do index.html cru, sem description nem canonical.
+    app.use(express.static(distPath, { index: false }));
+    // O template é lido uma vez e mantido em memória: em produção o dist é
+    // gerado no build, antes do processo subir, e não muda com ele em pé.
+    let indexTemplate: string | undefined;
+    app.get("*", async (req, res) => {
+      try {
+        indexTemplate ??= await fs.readFile(indexPath, "utf8");
+        const store = await loadStore();
+        const html = injectSeo(indexTemplate, buildPageSeo({
+          pathname: req.path,
+          business: store.business,
+          products: store.products,
+          siteUrl: siteUrlFor(req),
+          isValidWhatsapp: isValidWhatsappNumber(String(store.business.whatsapp ?? "")),
+          role: roleFor(req),
+        }));
+        res.status(200).type("html").send(html);
+      } catch (error) {
+        // A aplicação precisa continuar carregando mesmo se a injeção falhar:
+        // o SEO é um ganho adicional, não um ponto único de falha da loja.
+        console.error("Falha ao montar o HTML com metadados de SEO", error);
+        res.sendFile(indexPath);
+      }
+    });
+  }
   const port = Number(process.env.PORT) || 3000;
-  const server = app.listen(port, "0.0.0.0", () => console.log(`Brownies Fortal em http://0.0.0.0:${port}`));
+  const server = app.listen(port, "0.0.0.0", () => console.log(`Delícias da Sandra em http://0.0.0.0:${port}`));
   let shuttingDown = false;
   const shutdown = (signal: "SIGTERM" | "SIGINT") => {
     if (shuttingDown) return;

@@ -30,3 +30,113 @@
 .in-cart-count { color: var(--brand-pink); font-weight: 800; }
 @keyframes added-toast-in { 0% { transform: translate(-50%, 8px); opacity: 0; } 100% { transform: translate(-50%, 0); opacity: 1; } }
 .added-toast { position: fixed; z-index: 6; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--brand-brown-dark); color: #fff; border-radius: 999px; padding: 10px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 8px 24px rgb(63 36 24 / .18); pointer-events: none; animation: added-toast-in .22s ease; }
+
+/* Tela de entrega do pedido ao WhatsApp: a mensagem fica visível para a
+   pessoa conferir (e copiar, se o WhatsApp não abrir sozinho). */
+.handoff-message { margin: 22px 0; padding: 15px; text-align: left; border: 1px dashed var(--brand-pink); border-radius: 12px; }
+.handoff-message > b { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.handoff-message pre { margin: 10px 0 12px; font-family: inherit; font-size: 13px; line-height: 1.55; color: var(--neutral-text); white-space: pre-wrap; overflow-wrap: break-word; max-height: 220px; overflow-y: auto; }
+.handoff-message .text-button { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.confirmation .secondary.wide { margin-top: 6px; }
+.confirmation a.primary, .confirmation a.secondary { text-decoration: none; }
+
+/* Na vitrine, os controles de pedido viram links para o sistema — precisam
+   parecer exatamente os mesmos botões. */
+a.add-icon, a.cart-button, .hero-actions a.primary, .agent-invite a.primary, .product-page a.primary { text-decoration: none; }
+/* Endereço de retirada no rodapé — mesma pauta visual do restante do rodapé. */
+footer address { font-style: normal; }
+
+/* ---------------------------------------------------------------------------
+   Legibilidade e affordance dos controles.
+
+   O problema: o botão principal era branco sobre o rosa da marca (#e8a0b0),
+   contraste 2.08:1 — abaixo do mínimo legível de 4.5:1. Somado à ausência de
+   qualquer estilo de desabilitado, um botão ativo ficava com a mesma cara de
+   um botão morto. E as opções (horário, pagamento, retirada) tinham borda
+   #edd9cf a 1.36:1 contra o branco: praticamente invisíveis em repouso, só
+   apareciam quando o mouse passava por cima — o que não existe no celular.
+
+   A correção mantém o rosa da marca e troca o que estava ilegível: o rótulo
+   passa a ser o marrom escuro já usado nos títulos (6.93:1) e os limites dos
+   controles ganham uma borda que o olho enxerga parado (3.39:1). O hover
+   virou reforço, não a primeira pista.
+   --------------------------------------------------------------------------- */
+:root {
+  --control-border: #9e7a66;   /* >=3.3:1 no branco, no creme e no rosa-claro */
+  --on-brand-pink: #3c2415;    /* 6.93:1 sobre o rosa da marca */
+  --brand-pink-rim: #cb7288;   /* 3.33:1 — define a silhueta do botão cheio */
+  --brand-pink-hover: #d87c8f; /* 4.95:1 com o rótulo marrom */
+}
+
+.primary { background: var(--brand-pink); color: var(--on-brand-pink); border-color: var(--brand-pink-rim); }
+.secondary { border-color: var(--control-border); color: var(--brand-brown); }
+.choice { border-color: var(--control-border); color: var(--brand-brown-dark); }
+.cart-button, .add-icon { border-color: var(--control-border); }
+
+/* Desabilitado precisa ser inconfundível: antes não havia regra nenhuma e um
+   botão bloqueado ficava idêntico a um disponível. */
+:where(button, select, input, textarea):disabled,
+:where(button, a)[aria-disabled="true"] {
+  opacity: .45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+:where(button):disabled:active { transform: none; }
+
+@media (hover: hover) and (pointer: fine) {
+  .primary:not(:disabled):hover { background: var(--brand-pink-hover); border-color: var(--brand-pink-hover); color: var(--on-brand-pink); }
+  .secondary:not(:disabled):hover { background: var(--brand-pink-light); border-color: var(--brand-pink-rim); }
+  .choice:not(:disabled):hover { border-color: var(--brand-pink-rim); background: var(--brand-pink-light); }
+  .choice.active:not(:disabled):hover { background: var(--brand-brown-dark); border-color: var(--brand-brown-dark); }
+  .cart-button:hover, .add-icon:hover { border-color: var(--brand-pink-rim); background: var(--brand-pink-light); }
+  /* O hover deixa de ser a única pista: some junto um leve relevo. */
+  .primary:not(:disabled):hover, .secondary:not(:disabled):hover { box-shadow: 0 2px 8px rgb(63 36 24 / .14); }
+  .primary:disabled:hover, .secondary:disabled:hover { box-shadow: none; }
+}
+
+/* O rosa da marca é uma cor de fundo, não de texto: em 10–11px ele ficava a
+   ~2:1 contra o branco, abaixo dos 4.5:1 legíveis. Atingia inclusive o preço
+   promocional, que é informação comercial. Para texto, uma versão mais
+   fechada da mesma cor (4.69:1); o rosa original segue nos fundos. */
+:root { --brand-pink-text: #b04565; }  /* >=4.6:1 sobre branco, creme, rosa-claro e o fundo da página */
+.eyebrow, .product-category, .promo, .in-cart-count, .status { color: var(--brand-pink-text); }
+.how-steps li::before { color: var(--brand-pink-text); }
+
+/* Conteúdo sobre o rosa da marca segue a mesma regra do botão principal. */
+.cart-button b, .check, .add-icon.added { color: var(--on-brand-pink); }
+.add-icon.added { border-color: var(--brand-pink-rim); }
+.add-icon.in-cart-icon { border-color: var(--brand-pink-rim); color: var(--brand-pink-text); }
+/* O botão ligado precisa de silhueta visível para o pino branco. */
+.switch.on { background: var(--brand-pink-rim); }
+
+/* Campos e os botões de quantidade ainda usavam a linha decorativa (#edd9cf,
+   1.36:1): o contorno existia no CSS mas não no olho. */
+input, textarea, select, .editor input, .editor textarea, .quantity button { border-color: var(--control-border); }
+@media (hover: hover) and (pointer: fine) {
+  .quantity button:not(:disabled):hover { border-color: var(--brand-pink-rim); background: var(--brand-pink-light); }
+}
+/* Etiquetas do painel ("Destaque", "Brownie do Dia") usavam o rosa de fundo
+   como cor de texto em 9px — 2.08:1. */
+.product-flags b { color: var(--brand-pink-text); }
+/* O trilho do botão desligado estava a 1.81:1: nem o controle nem o pino
+   branco dentro dele tinham silhueta. */
+.switch { background: #978288; }
+/* Controles do painel com regras mais específicas que a geral acima. */
+.quick, .quick-actions button, .promo-editor, .promo-editor input, .order-search { border-color: var(--control-border); }
+@media (hover: hover) and (pointer: fine) {
+  .quick:hover { border-color: var(--brand-pink-rim); background: var(--brand-pink-light); }
+}
+
+/* Retorno de "item adicionado" sem símbolo de conclusão.
+   O ✓ dizia "pronto, pedido feito" no meio de uma escolha que ainda estava em
+   andamento. O botão volta a ser sempre "+", porque a ação dele nunca muda —
+   adicionar mais um. Quem informa o resultado é o contador do cartão, a borda
+   rosa, o número no topo e o aviso; aqui fica só um pulso, que chama atenção
+   sem afirmar nada. */
+@keyframes add-pulse { 0% { transform: scale(1); } 45% { transform: scale(1.16); } 100% { transform: scale(1); } }
+.add-icon.added { animation: add-pulse .32s ease; }
+@keyframes add-flash { 0% { background: var(--brand-pink); } 40% { background: var(--brand-pink-hover); } 100% { background: var(--brand-pink); } }
+.primary.added { animation: add-flash .4s ease; }
+
+/* Dica de formato abaixo do campo, ligada a ele por aria-describedby. */
+.campo-ajuda { font-size: 11px; font-weight: 400; color: var(--muted); line-height: 1.45; }

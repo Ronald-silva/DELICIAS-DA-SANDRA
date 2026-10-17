@@ -79,7 +79,9 @@ test("configuração Evolution exige os três valores e não cria segredo de web
     EVOLUTION_INSTANCE_TOKEN: "token",
   }), { ...config, instanceToken: "token" });
   assert.equal(readEvolutionWebhookToken({}, { production: false, evolutionConfigured: false }), undefined);
-  assert.throws(() => readEvolutionWebhookToken({}, { production: true, evolutionConfigured: false }), /EVOLUTION_WEBHOOK_TOKEN/);
+  // Em produção sem Evolution configurada não existe webhook para proteger,
+  // então o token não é exigido (commit 7f3c1ee).
+  assert.equal(readEvolutionWebhookToken({}, { production: true, evolutionConfigured: false }), undefined);
   assert.throws(() => readEvolutionWebhookToken({}, { production: false, evolutionConfigured: true }), /EVOLUTION_WEBHOOK_TOKEN/);
 });
 
