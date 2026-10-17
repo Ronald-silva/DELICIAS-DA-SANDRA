@@ -476,9 +476,14 @@ a.product-main { display: block; color: inherit; text-decoration: none; }
 @media (max-width: 900px) {
   .vitrine { --v-pad-block: 54px; }
   .v-hero { grid-template-columns: 1fr; }
-  /* No celular o selo vem primeiro: a marca abre a página. */
+  /* O selo some no celular. Ele repete a MESMA logo que o cabeçalho já
+     mostra, a poucos pixels dali, e um bloco dessa altura empurrava o título
+     e o botão de pedido para fora da primeira tela sem dizer nada novo. No
+     desktop ele continua: lá ancora a coluna direita e não disputa espaço.
+     A regra mira só o selo — uma foto real de produto, quando houver, segue
+     aparecendo e vem primeiro. */
+  .v-hero > .v-seal { display: none; }
   .v-hero > figure { order: -1; min-height: 0; }
-  .v-seal { min-height: 0; padding: 32px 22px; gap: 14px; }
   .v-hero-photo, .v-hero-photo img { min-height: 220px; }
   .v-steps-list { grid-template-columns: 1fr; gap: 20px; }
   .v-menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -487,10 +492,14 @@ a.product-main { display: block; color: inherit; text-decoration: none; }
 
 @media (max-width: 560px) {
   .vitrine { --v-pad-block: 42px; }
-  .v-hero { padding-block: 28px var(--v-pad-block); }
-  .v-hero-actions { gap: 10px; }
+  .v-hero { padding-block: 34px var(--v-pad-block); }
+  .v-hero-eyebrow { font-size: 10px; letter-spacing: .1em; gap: 8px; }
+  .v-hero-eyebrow::before { width: 24px; }
+  .v-hero h1 { font-size: clamp(36px, 10vw, 44px); }
+  .v-hero-lead { margin-top: 14px; }
+  .v-hero-actions { gap: 10px; margin-top: 24px; }
   .v-hero-actions .primary, .v-hero-actions .secondary { flex: 1 1 100%; }
-  .v-facts { gap: 14px 24px; }
+  .v-facts { margin-top: 26px; padding-top: 18px; gap: 14px 24px; }
   .v-menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .vitrine .product-photo { height: 140px; }
   .v-menu-all .secondary { width: 100%; }
