@@ -227,7 +227,8 @@
   line-height: 1.5;
 }
 
-/* Quando existir foto oficial cadastrada, ela ocupa o lugar do selo. */
+/* O vídeo da Sandra ocupa a área visual do banner; o poster segura o quadro
+   antes da reprodução e quando a pessoa prefere menos movimento. */
 .v-hero-photo {
   position: relative;
   margin: 0;
@@ -237,8 +238,11 @@
   background: var(--v-ink);
   box-shadow: 0 22px 48px rgb(43 24 16 / .22);
 }
-.v-hero-photo img { display: block; width: 100%; height: 100%; min-height: 420px; object-fit: cover; transition: transform .6s ease; }
-@media (hover: hover) and (pointer: fine) { .v-hero-photo:hover img { transform: scale(1.04); } }
+.v-hero-photo video { display: block; width: 100%; height: 100%; min-height: 420px; object-fit: cover; }
+.v-video-control { position: absolute; right: 14px; bottom: 14px; min-height: 44px; padding: 10px 14px; border: 1px solid #fff; border-radius: 10px; background: rgb(43 24 16 / .88); color: #fff; font-size: 12px; font-weight: 800; }
+.v-video-control:hover { background: var(--v-ink); }
+.v-video-control:active { transform: translateY(1px); }
+.v-video-control:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
 /* --------------------------------------------------------------------------
    Cardápio em destaque.
@@ -502,15 +506,10 @@ a.product-main { display: block; color: inherit; text-decoration: none; }
 @media (max-width: 900px) {
   .vitrine { --v-pad-block: 54px; }
   .v-hero { grid-template-columns: 1fr; }
-  /* O selo some no celular. Ele repete a MESMA logo que o cabeçalho já
-     mostra, a poucos pixels dali, e um bloco dessa altura empurrava o título
-     e o botão de pedido para fora da primeira tela sem dizer nada novo. No
-     desktop ele continua: lá ancora a coluna direita e não disputa espaço.
-     A regra mira só o selo — uma foto real de produto, quando houver, segue
-     aparecendo e vem primeiro. */
-  .v-hero > .v-seal { display: none; }
+  /* O vídeo vem antes do texto no celular, sem empurrar a ação principal
+     além do necessário. */
   .v-hero > figure { order: -1; min-height: 0; }
-  .v-hero-photo, .v-hero-photo img { min-height: 220px; }
+  .v-hero-photo, .v-hero-photo video { min-height: 220px; }
   .v-steps-list { grid-template-columns: 1fr; gap: 20px; }
   .v-menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .v-footer { grid-template-columns: 1fr; gap: 22px; }

@@ -162,6 +162,36 @@ function openingHoursText(business: Business): string {
   return structured || (business.hours ?? "").trim();
 }
 
+function HeroVideo() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [reduceMotion, setReduceMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [playing, setPlaying] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+
+  useEffect(() => {
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReduceMotion(preference.matches);
+    preference.addEventListener("change", onChange);
+    return () => preference.removeEventListener("change", onChange);
+  }, []);
+  useEffect(() => { if (reduceMotion) videoRef.current?.pause(); }, [reduceMotion]);
+
+  const togglePlayback = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) void video.play().catch(() => setPlaying(false));
+    else video.pause();
+  };
+
+  return <figure className="v-hero-photo">
+    <video ref={videoRef} autoPlay={!reduceMotion} muted loop playsInline preload={reduceMotion ? "none" : "metadata"} poster="/video-banner-poster.webp" aria-hidden="true" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onError={() => setVideoError(true)}>
+      <source src="/video-banner-loop.mp4" type="video/mp4" />
+    </video>
+    <figcaption className="sr-only">Bolo de chocolate com cobertura de brigadeiro.</figcaption>
+    {!videoError && <button type="button" className="v-video-control" onClick={togglePlayback}>{playing ? "Pausar vídeo" : "Reproduzir vídeo"}</button>}
+  </figure>;
+}
+
 function Home({ business, products, cart, onMenu, onProduct, onAdd, onAgent, orderHref }: { business: Business; products: Product[]; cart: CartLine[]; onMenu: () => void; onProduct: (p: Product) => void; onAdd: (p: Product) => void; onAgent: () => void; orderHref: OrderHref }) {
   const quantityOf = (id: string) => cart.find(l => l.product.id === id)?.quantity ?? 0;
   const whatsappLink = buildWhatsappLink(business.whatsapp);
@@ -170,10 +200,6 @@ function Home({ business, products, cart, onMenu, onProduct, onAdd, onAgent, ord
   const available = products.filter(p => p.isActive !== false);
   const featured = available.filter(p => p.isFeatured);
   const showcase = groupMenuProducts(featured.length > 0 ? featured : available).slice(0, 3);
-  // Só uma foto de verdade pode abrir a página. Sem nenhuma cadastrada, a
-  // abertura é o selo da marca — que é real — em vez de uma imagem de banco
-  // posando de produto da Sandra.
-  const heroPhoto = available.find(hasRealProductImage) ?? null;
   const hours = openingHoursText(business);
   const payments = (business.paymentMethods ?? []).map(paymentLabel).filter(Boolean);
   const menuHeading = isDemo ? "Exemplos de como o cardápio aparece" : "Nosso cardápio";
@@ -196,12 +222,7 @@ function Home({ business, products, cart, onMenu, onProduct, onAdd, onAgent, ord
           {payments.length > 0 && <li className="v-fact"><b>Pagamento</b><span>{payments.join(" · ")}</span></li>}
         </ul>
       </div>
-      {heroPhoto
-        ? <figure className="v-hero-photo"><img src={productImageSrc(heroPhoto)} alt={`${heroPhoto.name} — Delícias da Sandra`} width={900} height={1124} fetchPriority="high" decoding="async" /></figure>
-        : <figure className="v-seal">
-            <img src="/brand/delicias-da-sandra-logo.webp?v=3" alt="Delícias da Sandra" width={512} height={512} fetchPriority="high" decoding="async" />
-            {business.tagline && <figcaption><span>{business.tagline}</span></figcaption>}
-          </figure>}
+      <HeroVideo />
     </section>
 
     <section className="v-section" aria-labelledby="menu-title">
