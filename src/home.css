@@ -284,6 +284,32 @@ a.product-main { display: block; color: inherit; text-decoration: none; }
    <a> de navegação interna — precisam parecer botão, não link de texto. */
 .vitrine a.primary, .vitrine a.secondary, .vitrine a.add-icon, .vitrine a.cart-button { text-decoration: none; }
 
+/* O cardápio usa a mesma paleta da vitrine e mostra cada foto uma vez. */
+:root {
+  --menu-gap: 8px;
+  --menu-pad: 12px;
+  --menu-radius: 10px;
+  --menu-line: var(--line);
+  --menu-ink: var(--brand-brown-dark);
+  --menu-surface: var(--brand-cream);
+}
+.product-sizes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--menu-gap); margin-top: var(--menu-pad); }
+.product-sizes span { display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 46px; padding: var(--menu-gap); border: 1px solid var(--menu-line); border-radius: var(--menu-radius); background: var(--menu-surface); }
+.product-sizes b { color: var(--menu-ink); font-size: 12px; }
+.product-copy .product-sizes strong { margin: 0; color: var(--menu-ink); font-size: 13px; }
+.product-options-link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding-inline: var(--menu-pad); border: 1px solid var(--control-border); border-radius: var(--menu-radius); color: var(--menu-ink); background: #fff; font-size: 12px; font-weight: 800; text-decoration: none; }
+.product-options-link:hover, .product-variant:hover { background: var(--menu-surface); }
+.product-options-link:active, .product-variant:active { transform: translateY(1px); }
+.product-options-link:focus-visible, .product-variant:focus-visible { outline: 3px solid var(--brand-pink-rim); outline-offset: 2px; }
+.product-variant-picker { margin-top: 20px; }
+.product-variant-picker > p { margin: 0 0 var(--menu-gap); color: var(--menu-ink); font-size: 13px; font-weight: 800; }
+.product-variant-picker > div { display: flex; flex-wrap: wrap; gap: var(--menu-gap); }
+.product-variant { display: flex; flex-direction: column; justify-content: center; min-width: 118px; min-height: 56px; padding: var(--menu-gap) var(--menu-pad); border: 1px solid var(--control-border); border-radius: var(--menu-radius); color: var(--menu-ink); background: #fff; text-decoration: none; }
+.product-variant.active { border-color: var(--brand-brown-dark); background: var(--menu-surface); box-shadow: inset 0 0 0 1px var(--brand-brown-dark); }
+.product-variant strong { font-size: 14px; }
+.product-size-single { margin: 16px 0 0; color: var(--menu-ink); font-weight: 800; }
+@media (max-width: 640px) { .product-sizes { grid-template-columns: 1fr; } }
+
 /* Links de contato em texto corrido ficam com ~18px de altura. Num dedo isso
    é pouco — e são justamente o WhatsApp e o Instagram, o contato real da
    loja. Onde o ponteiro é grosso, ganham a mesma área de 44px que polish.css

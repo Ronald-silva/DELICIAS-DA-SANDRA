@@ -14,6 +14,7 @@ import { buildPageSeo, buildRobotsTxt, buildSitemapXml, injectSeo, resolveSiteRo
 import { isValidWhatsappNumber } from "./src/lib/whatsapp.ts";
 import { BROWNIER_DELIVERY_ENABLED, BROWNIER_HOURS_VERSION, BROWNIER_INSTAGRAM, BROWNIER_ADDRESS_REFERENCE, BROWNIER_PICKUP_ADDRESS, BROWNIER_PAYMENT_METHODS, BROWNIER_PIX_KEY, BROWNIER_WHATSAPP, ensureBrownierDeliveryEnabled, ensureBrownierInstagram, ensureBrownierPaymentMethods, ensureBrownierPickupAddress, ensureBrownierAddressReference, ensureBrownierOperatingHours, ensureBrownierPixKey, ensureBrownierResponsible, ensureBrownierWhatsapp } from "./src/lib/business-defaults.ts";
 import { validateStructuredWeeklyHours } from "./src/lib/business-hours.ts";
+import { createSandraMenuProducts, isLegacyBrownieMenu } from "./src/lib/menu-catalog.ts";
 import { createWhatsappConversationRuntime } from "./src/agent/whatsapp-conversation.runtime.ts";
 import { createPostgresConversationState } from "./src/agent/postgres-conversation-state.ts";
 import {
@@ -25,6 +26,7 @@ import {
 
 type Product = PricingProduct & {
   id: string; slug: string; description: string; category: string; imageUrl: string;
+  menuName?: string; menuGroup?: string; sizeLabel?: string;
   isActive: boolean; isAvailable: boolean; isFeatured: boolean; isDay?: boolean; displayOrder: number;
   ingredients?: string; allergens?: string; updatedAt: string;
 };
@@ -101,33 +103,24 @@ function verifyAdminSessionToken(token: string | undefined): boolean {
 
 const demoStore: Store = {
   business: {
-    name: "Delícias da Sandra", tagline: "Feito com carinho e qualidade", description: "Bolos, brownies, doces e salgados artesanais em Fortaleza. Veja o cardápio e monte seu pedido em poucos minutos.",
+    name: "Delícias da Sandra", tagline: "Feito com carinho e qualidade", description: "Bolos caseiros, tortas e salgados artesanais feitos com ingredientes selecionados. Sabor de casa em cada pedaço.",
     phone: BROWNIER_WHATSAPP, whatsapp: BROWNIER_WHATSAPP, address: BROWNIER_PICKUP_ADDRESS, addressReference: BROWNIER_ADDRESS_REFERENCE, hours: "", instagram: BROWNIER_INSTAGRAM, pickupEnabled: true, deliveryEnabled: BROWNIER_DELIVERY_ENABLED,
     pickupSlots: [],
     paymentMethods: [...BROWNIER_PAYMENT_METHODS], deliveryFee: 0,
     pixKey: BROWNIER_PIX_KEY,
     receivedMessage: "Recebemos seu pedido! A equipe da Delícias da Sandra vai confirmar os detalhes em breve.",
     availabilityNotice: "Os itens podem variar conforme a disponibilidade do dia.",
-    isDemo: true,
+    isDemo: false,
   },
-  products: [
-    ["brigadeiro", "Brownie de Brigadeiro", "Brownie artesanal finalizado com brigadeiro cremoso.", 5, true, "Chocolate, brigadeiro, farinha, ovos e manteiga", "Contém glúten, leite e ovos"],
-    ["ninho", "Brownie de Ninho", "Brownie de chocolate com cobertura de leite em pó.", 5, true, "Chocolate, leite em pó, farinha, ovos e manteiga", "Contém glúten, leite e ovos"],
-    ["oreo", "Brownie de Oreo", "Brownie com pedaços de biscoito de chocolate.", 5, true, "Chocolate, biscoito, farinha, ovos e manteiga", "Contém glúten, leite e ovos"],
-    ["prestigio", "Brownie de Prestígio", "Chocolate e coco em uma combinação clássica.", 5, true, "Chocolate, coco, farinha, ovos e manteiga", "Contém glúten, leite e ovos"],
-    ["ovomaltine", "Brownie de Ovomaltine", "Brownie de chocolate com cobertura crocante de Ovomaltine.", 5, true, "Chocolate, Ovomaltine, farinha, ovos e manteiga", "Contém glúten, leite, ovos e amendoim"],
-    ["doce-de-leite", "Brownie de Doce de Leite", "Brownie macio com doce de leite cremoso.", 5, true, "Chocolate, doce de leite, farinha, ovos e manteiga", "Contém glúten, leite e ovos"],
-  ].map(([slug, name, description, basePrice, available, ingredients, allergens], index) => ({
-    id: `demo-${slug}`, slug: String(slug), name: String(name), description: String(description), category: "Brownies", imageUrl: "",
-    basePrice: Number(basePrice), promotionalPrice: 3, minimumPromotionalQuantity: 20,
-    isActive: true, isAvailable: Boolean(available), isFeatured: index < 3, isDay: slug === "brigadeiro", displayOrder: index + 1,
-    ingredients: String(ingredients), allergens: String(allergens), updatedAt: new Date().toISOString(),
-  })),
+  products: createSandraMenuProducts(),
   orders: [],
 };
 
 async function loadStore(): Promise<Store> {
-  const store = await loadStoreFile(storePath, () => demoStore);
+  const loaded = await loadStoreFile(storePath, () => demoStore);
+  const store = isLegacyBrownieMenu(loaded.products)
+    ? { ...loaded, business: { ...loaded.business, isDemo: false }, products: createSandraMenuProducts() }
+    : loaded;
   const withOfficialAddress = ensureBrownierAddressReference(ensureBrownierPickupAddress(store));
   const withOperatingHours = ensureBrownierOperatingHours(withOfficialAddress);
   const withResponsible = ensureBrownierResponsible(withOperatingHours);
@@ -136,13 +129,13 @@ async function loadStore(): Promise<Store> {
   const withInstagram = ensureBrownierInstagram(withWhatsapp);
   const withDelivery = ensureBrownierDeliveryEnabled(withInstagram);
   const withPaymentMethods = ensureBrownierPaymentMethods(withDelivery);
-  if (withPaymentMethods !== store) await saveStore(withPaymentMethods);
+  if (withPaymentMethods !== loaded) await saveStore(withPaymentMethods);
   return withPaymentMethods;
 }
 async function saveStore(store: Store) { return saveStoreFile(storePath, store); }
 function publicProduct(product: Product) {
-  const { id, slug, name, description, category, imageUrl, basePrice, promotionalPrice, minimumPromotionalQuantity, isAvailable, isFeatured, isDay, displayOrder, ingredients, allergens, updatedAt } = product;
-  return { id, slug, name, description, category, imageUrl, basePrice, promotionalPrice, minimumPromotionalQuantity, isAvailable, isFeatured, isDay: isDay === true, displayOrder, ingredients, allergens, updatedAt };
+  const { id, slug, name, menuName, menuGroup, sizeLabel, description, category, imageUrl, basePrice, promotionalPrice, minimumPromotionalQuantity, isAvailable, isFeatured, isDay, displayOrder, ingredients, allergens, updatedAt } = product;
+  return { id, slug, name, menuName, menuGroup, sizeLabel, description, category, imageUrl, basePrice, promotionalPrice, minimumPromotionalQuantity, isAvailable, isFeatured, isDay: isDay === true, displayOrder, ingredients, allergens, updatedAt };
 }
 function validText(value: unknown, max: number) { return typeof value === "string" && value.trim().length > 0 && value.trim().length <= max; }
 function admin(req: Request, res: Response, next: NextFunction) {
@@ -311,7 +304,7 @@ async function startServer() {
   app.post("/api/admin/products", admin, adminProductBody, async (req, res) => {
     const store = await loadStore(); const body = req.body ?? {};
     if (!validText(body.name, 100)) return res.status(400).json({ error: "Nome do produto é obrigatório." });
-    const id = crypto.randomUUID(); const product: Product = { id, slug: uniqueSlug(String(body.slug || body.name), store.products.map(p => p.slug), id), name: body.name.trim(), description: String(body.description || "").trim(), category: String(body.category || "Brownies").trim(), imageUrl: "", basePrice: Number(body.basePrice || 0), promotionalPrice: body.promotionalPrice === null || body.promotionalPrice === "" ? null : Number(body.promotionalPrice), minimumPromotionalQuantity: body.minimumPromotionalQuantity === null || body.minimumPromotionalQuantity === "" ? null : Number(body.minimumPromotionalQuantity), isActive: body.isActive !== false, isAvailable: body.isAvailable !== false, isFeatured: Boolean(body.isFeatured), displayOrder: Number(body.displayOrder || store.products.length + 1), ingredients: String(body.ingredients || ""), allergens: String(body.allergens || ""), updatedAt: new Date().toISOString() };
+    const id = crypto.randomUUID(); const product: Product = { id, slug: uniqueSlug(String(body.slug || body.name), store.products.map(p => p.slug), id), name: body.name.trim(), description: String(body.description || "").trim(), category: String(body.category || "Bolos").trim(), imageUrl: "", basePrice: Number(body.basePrice || 0), promotionalPrice: body.promotionalPrice === null || body.promotionalPrice === "" ? null : Number(body.promotionalPrice), minimumPromotionalQuantity: body.minimumPromotionalQuantity === null || body.minimumPromotionalQuantity === "" ? null : Number(body.minimumPromotionalQuantity), isActive: body.isActive !== false, isAvailable: body.isAvailable !== false, isFeatured: Boolean(body.isFeatured), displayOrder: Number(body.displayOrder || store.products.length + 1), ingredients: String(body.ingredients || ""), allergens: String(body.allergens || ""), updatedAt: new Date().toISOString() };
     store.products.push(product); await saveStore(store); res.status(201).json(product);
   });
   app.put("/api/admin/products/:id", admin, adminProductBody, async (req, res) => {

@@ -10,7 +10,7 @@ import { buildOrderWhatsappLink, buildOrderWhatsappMessage, buildWhatsappLink, i
 import { paymentLabel } from "./lib/payment";
 import { maskCurrencyBRL, maskPhoneBR } from "./lib/mask";
 
-type Product = PricingProduct & { id: string; slug: string; name: string; description: string; category: string; imageUrl: string; isActive: boolean; isAvailable: boolean; isFeatured: boolean; isDay?: boolean; displayOrder: number; ingredients?: string; allergens?: string; updatedAt: string };
+type Product = PricingProduct & { id: string; slug: string; name: string; menuName?: string; menuGroup?: string; sizeLabel?: string; description: string; category: string; imageUrl: string; isActive: boolean; isAvailable: boolean; isFeatured: boolean; isDay?: boolean; displayOrder: number; ingredients?: string; allergens?: string; updatedAt: string };
 type Business = { name: string; tagline: string; description: string; phone: string; whatsapp: string; responsibleName?: string; address: string; addressReference?: string; hours: string; operatingHours?: StructuredWeeklyHours; instagram: string; pickupEnabled: boolean; deliveryEnabled: boolean; pickupSlots: string[]; paymentMethods: string[]; deliveryFee: number; receivedMessage: string; availabilityNotice: string; isDemo: boolean };
 type CartLine = { product: Product; quantity: number };
 type OrderHandoff = { link: string; message: string };
@@ -43,6 +43,10 @@ export default function App() {
   const refresh = async () => {
     const [b, p] = await Promise.all([api<Business>("/api/public/business"), api<Product[]>("/api/public/menu")]);
     setBusiness(b); setProducts(p);
+    setCart(lines => lines.flatMap(line => {
+      const current = p.find(product => product.id === line.product.id && product.isAvailable);
+      return current ? [{ product: current, quantity: line.quantity }] : [];
+    }));
     // Falha aqui não pode derrubar o cardápio: sem a configuração, o site se
     // comporta como endereço único, que é o modo completo.
     api<SiteConfig>("/api/public/site").then(setSite).catch(() => undefined);
@@ -77,8 +81,9 @@ function ProductRoute() {
   const navigate = useNavigate();
   const product = products.find(p => p.slug === slug);
   if (!product) return <main className="loading">Produto não encontrado.</main>;
-  const recommendations = products.filter(p => p.isFeatured && p.id !== product.id && p.isAvailable).slice(0, 2);
-  return <ProductDetail product={product} recommendations={recommendations} cart={cart} onBack={() => navigate("/cardapio")} onAdd={add} orderHref={orderHref} />;
+  const variants = products.filter(p => (p.menuGroup || p.id) === (product.menuGroup || product.id));
+  const recommendations = products.filter(p => p.isFeatured && (p.menuGroup || p.id) !== (product.menuGroup || product.id) && p.isAvailable).filter((p, i, list) => list.findIndex(other => (other.menuGroup || other.id) === (p.menuGroup || p.id)) === i).slice(0, 2);
+  return <ProductDetail product={product} variants={variants} recommendations={recommendations} cart={cart} onBack={() => navigate("/cardapio")} onAdd={add} orderHref={orderHref} />;
 }
 function CartRoute() {
   const { cart, summary, change, orderHref } = useOutletContext<AppContext>();
@@ -118,13 +123,25 @@ function AgentDemoRoute() {
 }
 export { HomeRoute, MenuRoute, ProductRoute, CartRoute, CheckoutRoute, OrderHandoffRoute, AdminRoute, AgentDemoRoute };
 
+function groupMenuProducts(products: Product[]): Product[][] {
+  const groups = new Map<string, Product[]>();
+  for (const product of products) {
+    const key = product.menuGroup || product.id;
+    groups.set(key, [...(groups.get(key) || []), product]);
+  }
+  return [...groups.values()];
+}
+
+function menuDisplayName(product: Product): string {
+  return product.menuName && product.name.startsWith(product.menuName) ? product.menuName : product.name;
+}
+
 // ---------------------------------------------------------------------------
 // Vitrine pública.
 //
 // Regra que governa este componente: nada é afirmado que não esteja no Store.
-// Enquanto `business.isDemo` for true, o cardápio cadastrado é a semente
-// herdada da empresa anterior — ele continua aparecendo (é o que alimenta o
-// pedido), mas identificado como exemplo, nunca como o cardápio da Sandra.
+// Enquanto `business.isDemo` for true, o cardápio cadastrado aparece como
+// demonstração. A semente atual já contém os produtos informados pela Sandra.
 // Endereço, WhatsApp, horário e formas de pagamento vêm do Store e já são
 // reais; por isso aparecem, e só quando preenchidos.
 //
@@ -152,7 +169,7 @@ function Home({ business, products, cart, onMenu, onProduct, onAdd, onAgent, ord
   const isDemo = business.isDemo === true;
   const available = products.filter(p => p.isActive !== false);
   const featured = available.filter(p => p.isFeatured);
-  const showcase = (featured.length > 0 ? featured : available).slice(0, 3);
+  const showcase = groupMenuProducts(featured.length > 0 ? featured : available).slice(0, 3);
   // Só uma foto de verdade pode abrir a página. Sem nenhuma cadastrada, a
   // abertura é o selo da marca — que é real — em vez de uma imagem de banco
   // posando de produto da Sandra.
@@ -196,7 +213,7 @@ function Home({ business, products, cart, onMenu, onProduct, onAdd, onAgent, ord
         </div>
       </div>
       <div className="v-menu-grid">
-        {showcase.map(p => <ProductCard key={p.id} product={p} to={`/cardapio/${p.slug}`} isDay={p.isDay === true} quantity={quantityOf(p.id)} onClick={() => onProduct(p)} onAdd={() => onAdd(p)} orderHref={orderHref} />)}
+        {showcase.map(group => { const p = group.find(item => item.isAvailable) || group[0]!; return <ProductCard key={p.id} product={p} variants={group} to={`/cardapio/${p.slug}`} isDay={p.isDay === true} quantity={group.reduce((sum, item) => sum + quantityOf(item.id), 0)} onClick={() => onProduct(p)} onAdd={() => onAdd(p)} orderHref={orderHref} />; })}
       </div>
       <div className="v-menu-all"><Link className="secondary" to="/cardapio">Ver o cardápio completo</Link></div>
     </section>
@@ -364,9 +381,14 @@ function AgentDemo({ onBack }: { onBack: () => void }) {
     initializedSessionRef.current = sessionId;
     void send("Olá");
   }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <section className="section page agent-demo-page"><Back onClick={onBack} /><div className="agent-demo-heading"><div><p className="eyebrow">DEMONSTRAÇÃO AO VIVO</p><h1>A assistente que atende enquanto você produz.</h1><p className="subtle">Este chat usa o mesmo cérebro do atendimento. É uma simulação segura: nenhum pedido é enviado para a produção.</p></div><button className="secondary agent-reset" onClick={restart} disabled={loading}><RotateCcw size={16} aria-hidden="true" /> Recomeçar</button></div><div className="agent-chat" aria-label="Conversa com a assistente"><div className="agent-chat-top"><span className="agent-status"><i /> Assistente Delícias da Sandra</span><small>online para demonstração</small></div><div className="agent-messages" ref={messagesViewportRef} onScroll={handleMessagesScroll} aria-live="polite">{messages.map(message => <div className={`agent-message ${message.author}`} key={message.id}><div>{message.author === "agent" && message.metadata?.products?.length ? <AgentMenuCarousel products={message.metadata.products} /> : <span>{renderChatText(message.text)}</span>}{message.author === "agent" && message.metadata?.pixKey && <button className="agent-copy-pix" type="button" onClick={() => void copyPixKey(message.metadata!.pixKey!)}>{copiedPixKey === message.metadata.pixKey ? "Copiado!" : "Copiar chave PIX"}</button>}</div></div>)}{loading && <div className="agent-message agent typing" aria-label="Assistente digitando"><span><i /><i /><i /></span></div>}</div><form ref={composerRef} className="agent-composer" onSubmit={event => { event.preventDefault(); void send(draft); }} aria-busy={loading}><input ref={composerInputRef} value={draft} onChange={event => setDraft(event.target.value)} placeholder="Escreva sua mensagem…" maxLength={1500} aria-label="Sua mensagem" autoComplete="off" /><button className="primary" disabled={loading || !draft.trim()} aria-label="Enviar mensagem"><Send size={18} aria-hidden="true" /></button></form></div>{error && <p className="error">{error}</p>}<div className="agent-prompts"><span>Experimente:</span>{["Quais sabores vocês têm?", "Quero 2 brownies de brigadeiro", "Como posso pagar?"].map(prompt => <button key={prompt} className="choice" onClick={() => void send(prompt)} disabled={loading}>{prompt}</button>)}</div></section>;
+  return <section className="section page agent-demo-page"><Back onClick={onBack} /><div className="agent-demo-heading"><div><p className="eyebrow">DEMONSTRAÇÃO AO VIVO</p><h1>A assistente que atende enquanto você produz.</h1><p className="subtle">Este chat usa o mesmo cérebro do atendimento. É uma simulação segura: nenhum pedido é enviado para a produção.</p></div><button className="secondary agent-reset" onClick={restart} disabled={loading}><RotateCcw size={16} aria-hidden="true" /> Recomeçar</button></div><div className="agent-chat" aria-label="Conversa com a assistente"><div className="agent-chat-top"><span className="agent-status"><i /> Assistente Delícias da Sandra</span><small>online para demonstração</small></div><div className="agent-messages" ref={messagesViewportRef} onScroll={handleMessagesScroll} aria-live="polite">{messages.map(message => <div className={`agent-message ${message.author}`} key={message.id}><div>{message.author === "agent" && message.metadata?.products?.length ? <AgentMenuCarousel products={message.metadata.products} /> : <span>{renderChatText(message.text)}</span>}{message.author === "agent" && message.metadata?.pixKey && <button className="agent-copy-pix" type="button" onClick={() => void copyPixKey(message.metadata!.pixKey!)}>{copiedPixKey === message.metadata.pixKey ? "Copiado!" : "Copiar chave PIX"}</button>}</div></div>)}{loading && <div className="agent-message agent typing" aria-label="Assistente digitando"><span><i /><i /><i /></span></div>}</div><form ref={composerRef} className="agent-composer" onSubmit={event => { event.preventDefault(); void send(draft); }} aria-busy={loading}><input ref={composerInputRef} value={draft} onChange={event => setDraft(event.target.value)} placeholder="Escreva sua mensagem…" maxLength={1500} aria-label="Sua mensagem" autoComplete="off" /><button className="primary" disabled={loading || !draft.trim()} aria-label="Enviar mensagem"><Send size={18} aria-hidden="true" /></button></form></div>{error && <p className="error">{error}</p>}<div className="agent-prompts"><span>Experimente:</span>{["Quais bolos vocês têm?", "Quero um bolo de milho de 600 g", "Como posso pagar?"].map(prompt => <button key={prompt} className="choice" onClick={() => void send(prompt)} disabled={loading}>{prompt}</button>)}</div></section>;
 }
-function Menu({ products, cart, onBack, onProduct, onAdd, orderHref }: { products: Product[]; cart: CartLine[]; onBack: () => void; onProduct: (p: Product) => void; onAdd: (p: Product) => void; orderHref: OrderHref }) { const ordered = [...products].sort((a,b) => Number(b.isDay === true) - Number(a.isDay === true) || Number(b.isFeatured) - Number(a.isFeatured) || Number(b.isAvailable) - Number(a.isAvailable) || a.displayOrder - b.displayOrder); const quantityOf = (id: string) => cart.find(l => l.product.id === id)?.quantity ?? 0; return <section className="section page menu-page"><Back onClick={onBack} /><p className="eyebrow">CARDÁPIO ATUALIZADO</p><h1>Escolha seu momento doce.</h1><p className="subtle">Produzidos em pequenos lotes. Sabores disponíveis aparecem primeiro.</p><h2 className="sr-only">Sabores disponíveis</h2><div className="product-grid menu-grid">{ordered.map(p => <ProductCard key={p.id} product={p} to={`/cardapio/${p.slug}`} isDay={p.isDay === true} quantity={quantityOf(p.id)} onClick={() => onProduct(p)} onAdd={() => onAdd(p)} orderHref={orderHref} />)}</div></section> }
+function Menu({ products, cart, onBack, onProduct, onAdd, orderHref }: { products: Product[]; cart: CartLine[]; onBack: () => void; onProduct: (p: Product) => void; onAdd: (p: Product) => void; orderHref: OrderHref }) {
+  const ordered = [...products].sort((a,b) => Number(b.isDay === true) - Number(a.isDay === true) || Number(b.isFeatured) - Number(a.isFeatured) || Number(b.isAvailable) - Number(a.isAvailable) || a.displayOrder - b.displayOrder);
+  const groups = groupMenuProducts(ordered);
+  const quantityOf = (id: string) => cart.find(l => l.product.id === id)?.quantity ?? 0;
+  return <section className="section page menu-page"><Back onClick={onBack} /><p className="eyebrow">CARDÁPIO ATUALIZADO</p><h1>Bolos e salgados da Sandra.</h1><p className="subtle">Escolha seu favorito e confira os tamanhos disponíveis.</p><h2 className="sr-only">Produtos disponíveis</h2><div className="product-grid menu-grid">{groups.map(group => { const p = group.find(item => item.isAvailable) || group[0]!; return <ProductCard key={p.id} product={p} variants={group} to={`/cardapio/${p.slug}`} isDay={p.isDay === true} quantity={group.reduce((sum, item) => sum + quantityOf(item.id), 0)} onClick={() => onProduct(p)} onAdd={() => onAdd(p)} orderHref={orderHref} />; })}</div></section>;
+}
 // A área clicável do cartão é um link quando há destino — para que o
 // rastreador siga o produto — e continua um botão quando não há.
 function ProductMain({ to, onClick, children }: { to?: string; onClick: () => void; children: ReactNode }) {
@@ -374,16 +396,24 @@ function ProductMain({ to, onClick, children }: { to?: string; onClick: () => vo
     ? <Link className="product-main" to={to}>{children}</Link>
     : <button className="product-main" onClick={onClick}>{children}</button>;
 }
-function ProductCard({ product, isDay = false, quantity = 0, to, onClick, onAdd, orderHref }: { key?: string; product: Product; isDay?: boolean; quantity?: number; to?: string; onClick: () => void; onAdd?: () => void; orderHref?: OrderHref }) {
+function ProductCard({ product, variants = [product], isDay = false, quantity = 0, to, onClick, onAdd, orderHref }: { key?: string; product: Product; variants?: Product[]; isDay?: boolean; quantity?: number; to?: string; onClick: () => void; onAdd?: () => void; orderHref?: OrderHref }) {
   const promo = product.promotionalPrice && product.minimumPromotionalQuantity;
   const inCart = quantity > 0;
   const [justAdded, setJustAdded] = useState(false);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (addedTimer.current) clearTimeout(addedTimer.current); }, []);
   const handleAdd = () => { onAdd?.(); setJustAdded(true); if (addedTimer.current) clearTimeout(addedTimer.current); addedTimer.current = setTimeout(() => setJustAdded(false), 800); };
-  return <article className={`product-card ${!product.isAvailable ? "sold-out" : ""}${inCart ? " in-cart" : ""}`}><ProductMain to={to} onClick={onClick}><div className="product-photo"><img loading="lazy" decoding="async" src={productImageSrc(product)} alt={hasRealProductImage(product) ? `${product.name} — Delícias da Sandra` : `Imagem ilustrativa; a foto de ${product.name} ainda não foi cadastrada`} />{isDay && <span className="day-badge">Destaque do dia</span>}{!hasRealProductImage(product) && <span className="photo-note">Foto ilustrativa</span>}</div><div className="product-copy"><p className="product-category">{product.category}</p><h3>{product.name}</h3><p>{product.description}</p>{promo && <small className="promo">{formatCurrency(product.promotionalPrice!)} cada a partir de {product.minimumPromotionalQuantity} un. no pedido</small>}<strong>{formatCurrency(product.basePrice)}</strong></div></ProductMain><div className="product-footer"><span className={product.isAvailable ? "available" : "unavailable"}>{product.isAvailable ? "Disponível hoje" : "Indisponível hoje"}{inCart && <b className="in-cart-count"> · {quantity} no pedido<span className="sr-only"> — Este brownie já faz parte do seu pedido.</span></b>}</span>{orderHref ? (product.isAvailable ? <a className="add-icon" href={orderHref(product.slug)} aria-label={`Fazer pedido de ${product.name}`}><Plus size={18} aria-hidden="true" /></a> : <span className="add-icon" aria-hidden="true">—</span>) : onAdd && <button disabled={!product.isAvailable} className={`add-icon${justAdded ? " added" : ""}${inCart ? " in-cart-icon" : ""}`} onClick={handleAdd} aria-label={`Adicionar ${product.name} ao pedido`}>{product.isAvailable ? <Plus size={18} aria-hidden="true" /> : "—"}</button>}</div></article>;
+  const hasOptions = variants.length > 1;
+  const available = variants.some(item => item.isAvailable);
+  return <article className={`product-card ${!available ? "sold-out" : ""}${inCart ? " in-cart" : ""}`}>
+    <ProductMain to={to} onClick={onClick}>
+      <div className="product-photo"><img loading="lazy" decoding="async" src={productImageSrc(product)} alt={hasRealProductImage(product) ? `${menuDisplayName(product)} — Delícias da Sandra` : `Imagem ilustrativa; a foto de ${menuDisplayName(product)} ainda não foi cadastrada`} />{isDay && <span className="day-badge">Destaque do dia</span>}{!hasRealProductImage(product) && <span className="photo-note">Foto ilustrativa</span>}</div>
+      <div className="product-copy"><p className="product-category">{product.category}</p><h3>{menuDisplayName(product)}</h3>{hasOptions || product.sizeLabel ? <div className="product-sizes">{variants.map(item => <span key={item.id}>{item.sizeLabel && <b>{item.sizeLabel}</b>}<strong>{formatCurrency(item.basePrice)}</strong></span>)}</div> : <strong>{formatCurrency(product.basePrice)}</strong>}{promo && <small className="promo">{formatCurrency(product.promotionalPrice!)} cada a partir de {product.minimumPromotionalQuantity} un. no pedido</small>}</div>
+    </ProductMain>
+    <div className="product-footer"><span className={available ? "available" : "unavailable"}>{available ? "Disponível hoje" : "Indisponível hoje"}{inCart && <b className="in-cart-count"> · {quantity} no pedido</b>}</span>{hasOptions ? (orderHref ? <a className="product-options-link" href={orderHref(product.slug)}>Ver tamanhos</a> : <Link className="product-options-link" to={`/cardapio/${product.slug}`}>Ver tamanhos</Link>) : orderHref ? (available ? <a className="add-icon" href={orderHref(product.slug)} aria-label={`Fazer pedido de ${product.name}`}><Plus size={18} aria-hidden="true" /></a> : <span className="add-icon" aria-hidden="true">—</span>) : onAdd && <button disabled={!available} className={`add-icon${justAdded ? " added" : ""}${inCart ? " in-cart-icon" : ""}`} onClick={handleAdd} aria-label={`Adicionar ${product.name} ao pedido`}>{available ? <Plus size={18} aria-hidden="true" /> : "—"}</button>}</div>
+  </article>;
 }
-function ProductDetail({ product, recommendations, cart, onBack, onAdd, orderHref }: { product: Product; recommendations: Product[]; cart: CartLine[]; onBack: () => void; onAdd: (p: Product, q: number) => void; orderHref: OrderHref }) {
+function ProductDetail({ product, variants, recommendations, cart, onBack, onAdd, orderHref }: { product: Product; variants: Product[]; recommendations: Product[]; cart: CartLine[]; onBack: () => void; onAdd: (p: Product, q: number) => void; orderHref: OrderHref }) {
   const [quantity, setQuantity] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -391,7 +421,21 @@ function ProductDetail({ product, recommendations, cart, onBack, onAdd, orderHre
   const cartQuantity = cart.reduce((sum, line) => sum + line.quantity, 0);
   const price = calculateLinePrice(product, quantity, cartQuantity + quantity);
   const handleAdd = () => { onAdd(product, quantity); setJustAdded(true); if (addedTimer.current) clearTimeout(addedTimer.current); addedTimer.current = setTimeout(() => setJustAdded(false), 800); };
-  return <section className="section page product-page"><Back onClick={onBack} /><figure className="product-hero-photo"><img src={productImageSrc(product)} alt={`Imagem demonstrativa de ${product.name}`} width={900} height={1124} decoding="async" /><figcaption>Imagem demonstrativa — aguardando foto oficial</figcaption></figure><p className="eyebrow">FEITO ARTESANALMENTE</p><h1>{product.name}</h1>{!product.isAvailable && <span className="unavailable">Indisponível hoje</span>}<p className="detail-description">{product.description}</p><strong className="big-price">{formatCurrency(price.unitPrice)}</strong>{product.promotionalPrice && <p className="promo">Quanto mais brownies no pedido — de qualquer sabor —, melhor o preço: {formatCurrency(product.promotionalPrice)} cada a partir de {product.minimumPromotionalQuantity} unidades.</p>}<Info label="Ingredientes" value={product.ingredients} /><Info label="Alergênicos" value={product.allergens} />{orderHref ? (product.isAvailable ? <a className="primary wide" href={orderHref(product.slug)}>Fazer pedido <ChevronRight size={18} aria-hidden="true" /></a> : <p className="cart-nudge">Indisponível hoje.</p>) : <><div className="quantity"><button aria-label="Diminuir quantidade" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus size={18} aria-hidden="true" /></button><b>{quantity}</b><button aria-label="Aumentar quantidade" onClick={() => setQuantity(q => q + 1)}><Plus size={18} aria-hidden="true" /></button></div><button disabled={!product.isAvailable} className={`primary wide${justAdded ? " added" : ""}`} onClick={handleAdd}>{!product.isAvailable ? "Indisponível hoje" : `Adicionar ao pedido · ${formatCurrency(price.total)}`}</button></>}<RelatedProducts products={recommendations} /></section>;
+  return <section className="section page product-page">
+    <Back onClick={onBack} />
+    <figure className="product-hero-photo"><img src={productImageSrc(product)} alt={hasRealProductImage(product) ? `${menuDisplayName(product)} — Delícias da Sandra` : `Imagem ilustrativa de ${product.name}`} width={900} height={1124} decoding="async" />{!hasRealProductImage(product) && <figcaption>Imagem ilustrativa</figcaption>}</figure>
+    <p className="eyebrow">{product.category.toUpperCase()} · FEITO ARTESANALMENTE</p>
+    <h1>{menuDisplayName(product)}</h1>
+    {product.description && product.description !== menuDisplayName(product) && <p className="detail-description">{product.description}</p>}
+    {variants.length > 1 && <div className="product-variant-picker"><p>Escolha o tamanho</p><div>{variants.map(item => <Link key={item.id} to={`/cardapio/${item.slug}`} aria-current={item.id === product.id ? "page" : undefined} className={item.id === product.id ? "product-variant active" : "product-variant"}><span>{item.sizeLabel}</span><strong>{formatCurrency(item.basePrice)}</strong></Link>)}</div></div>}
+    {variants.length === 1 && product.sizeLabel && <p className="product-size-single">{product.sizeLabel}</p>}
+    {!product.isAvailable && <span className="unavailable">Indisponível hoje</span>}
+    <strong className="big-price">{formatCurrency(price.unitPrice)}</strong>
+    {product.promotionalPrice && <p className="promo">{formatCurrency(product.promotionalPrice)} cada a partir de {product.minimumPromotionalQuantity} unidades no pedido.</p>}
+    <Info label="Ingredientes" value={product.ingredients} /><Info label="Alergênicos" value={product.allergens} />
+    {orderHref ? (product.isAvailable ? <a className="primary wide" href={orderHref(product.slug)}>Fazer pedido <ChevronRight size={18} aria-hidden="true" /></a> : <p className="cart-nudge">Indisponível hoje.</p>) : <><div className="quantity"><button aria-label="Diminuir quantidade" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus size={18} aria-hidden="true" /></button><b>{quantity}</b><button aria-label="Aumentar quantidade" onClick={() => setQuantity(q => q + 1)}><Plus size={18} aria-hidden="true" /></button></div><button disabled={!product.isAvailable} className={`primary wide${justAdded ? " added" : ""}`} onClick={handleAdd}>{!product.isAvailable ? "Indisponível hoje" : `Adicionar ao pedido · ${formatCurrency(price.total)}`}</button></>}
+    <RelatedProducts products={recommendations} />
+  </section>;
 }
 function RelatedProducts({ products }: { products: Product[] }) { return products.length ? <section className="related"><p className="eyebrow">COMBINA COM</p><h2>Outros favoritos da Delícias da Sandra</h2><div>{products.map(product => <span key={product.id}>{product.name}</span>)}</div></section> : null }
 function Cart({ lines, subtotal, discount, onBack, onChange, onCheckout }: { lines: CartLine[]; subtotal: number; discount: number; onBack: () => void; onChange: (id: string, q: number) => void; onCheckout: () => void }) { const [confirmingClear, setConfirmingClear] = useState(false); const totalQuantity = lines.reduce((sum, line) => sum + line.quantity, 0); const promoLine = lines.find(line => line.product.minimumPromotionalQuantity !== null); const promotionHint = promoLine && totalQuantity < promoLine.product.minimumPromotionalQuantity! ? promoLine.product.minimumPromotionalQuantity! - totalQuantity : null; return <section className="section page cart-page"><Back onClick={onBack} /><p className="eyebrow">SEU PEDIDO</p><h1>Seu pedido está quase pronto.</h1>{lines.length === 0 ? <div className="empty"><GiftBox aria-hidden="true" /><h2>Ainda não tem nada por aqui.</h2><p>Escolha seus favoritos no cardápio.</p><button className="primary" onClick={onBack}>Ver cardápio</button></div> : <>{promotionHint !== null && <p className="cart-nudge">Faltam {promotionHint} itens para aproveitar o preço por quantidade.</p>}<h2 className="sr-only">Itens do pedido</h2><div className="cart-list">{lines.map(line => { const price = calculateLinePrice(line.product, line.quantity, totalQuantity); return <article className="cart-line" key={line.product.id}><img loading="lazy" decoding="async" src={productImageSrc(line.product)} alt={`Imagem demonstrativa de ${line.product.name}`} width={60} height={60} /><div><h3>{line.product.name}</h3><p>{formatCurrency(price.unitPrice)} cada</p><div className="quantity small"><button aria-label="Diminuir" onClick={() => onChange(line.product.id, line.quantity - 1)}><span className="qty-dot"><Minus size={14} aria-hidden="true" /></span></button><b>{line.quantity}</b><button aria-label="Aumentar" onClick={() => onChange(line.product.id, line.quantity + 1)}><span className="qty-dot"><Plus size={14} aria-hidden="true" /></span></button></div></div><strong>{formatCurrency(price.total)}</strong></article>; })}</div><Totals subtotal={subtotal} discount={discount} deliveryFee={0} /><button className="primary wide" onClick={onCheckout}>Continuar pedido <ChevronRight size={18} aria-hidden="true" /></button>{confirmingClear ? <p className="clear-confirm"><span>Remover todos os itens?</span><button className="link-danger" onClick={() => { lines.forEach(l => onChange(l.product.id, 0)); setConfirmingClear(false); }}>Sim, limpar</button><button className="text-button" onClick={() => setConfirmingClear(false)}>Cancelar</button></p> : <button className="link-danger" onClick={() => setConfirmingClear(true)}>Limpar pedido</button>}</>}</section> }

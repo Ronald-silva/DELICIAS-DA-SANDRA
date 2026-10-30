@@ -7,8 +7,9 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-const REAL_DEMO_PATH = path.join(process.cwd(), "data", "brownies-fortal.demo.json");
+const REAL_DEMO_PATH = path.join(process.cwd(), "data", "delicias-da-sandra.demo.json");
 const ADMIN_CODE = "brownies-demo";
+const MENU_OPTION_ID = "sandra-amanteigado-doce-leite-500-g";
 
 async function hashIfExists(filePath: string): Promise<string | null> {
   try {
@@ -75,7 +76,7 @@ test("POST /api/public/orders cria o pedido, persiste no armazenamento temporár
     await waitForServer(baseUrl, 20_000);
 
     const payload = {
-      items: [{ productId: "demo-brigadeiro", quantity: 2 }],
+      items: [{ productId: MENU_OPTION_ID, quantity: 2 }],
       customerName: "Pedido de teste de integração",
       customerPhone: "85999998888",
       fulfillmentType: "RETIRADA",
@@ -92,10 +93,10 @@ test("POST /api/public/orders cria o pedido, persiste no armazenamento temporár
     });
     assert.equal(createResponse.status, 201);
     const order = await createResponse.json();
-    assert.equal(order.subtotal, 10);
+    assert.equal(order.subtotal, 50);
     assert.equal(order.discount, 0);
     assert.equal(order.deliveryFee, 0);
-    assert.equal(order.total, 10);
+    assert.equal(order.total, 50);
     assert.equal(order.status, "NOVO");
     assert.ok(typeof order.publicCode === "string" && order.publicCode.startsWith("BF-"));
 
@@ -103,7 +104,7 @@ test("POST /api/public/orders cria o pedido, persiste no armazenamento temporár
     const onDisk = JSON.parse(await fs.readFile(tempStorePath, "utf8"));
     const persistedOrder = onDisk.orders.find((o: { id: string }) => o.id === order.id);
     assert.ok(persistedOrder, "pedido deveria estar persistido no armazenamento temporário");
-    assert.equal(persistedOrder.total, 10);
+    assert.equal(persistedOrder.total, 50);
 
     // Aparece no bootstrap administrativo (o que alimenta o painel /equipe).
     const loginResponse = await fetch(`${baseUrl}/api/admin/login`, {
@@ -159,7 +160,7 @@ test("POST /api/public/orders com Idempotency-Key: replay retorna o mesmo pedido
     await waitForServer(baseUrl, 20_000);
 
     const payload = {
-      items: [{ productId: "demo-brigadeiro", quantity: 2 }],
+      items: [{ productId: MENU_OPTION_ID, quantity: 2 }],
       customerName: "Pedido de teste de idempotência",
       customerPhone: "85999998888",
       fulfillmentType: "RETIRADA",
@@ -203,7 +204,7 @@ test("POST /api/public/orders com Idempotency-Key: replay retorna o mesmo pedido
     assert.equal(bootstrapAfterReplay.orders.length, 1);
 
     // 10-11. Mesma chave, quantidade diferente: conflito (409).
-    const conflictingPayload = { ...payload, items: [{ productId: "demo-brigadeiro", quantity: 3 }] };
+    const conflictingPayload = { ...payload, items: [{ productId: MENU_OPTION_ID, quantity: 3 }] };
     const conflictResponse = await postOrder(conflictingPayload, "integration-key-001");
     assert.equal(conflictResponse.status, 409);
 
